@@ -178,3 +178,38 @@ export const cancelBooking = async (req, res) => {
         });
     }
 };
+
+export const getAllBookings = async (req, res) => {
+    try {
+        const bookings = await Booking.findAll({
+            include: [
+                { association: 'client' },        // Changed from bookingClient
+                { association: 'photographer' }    // Changed from assignedPhotographer
+            ]
+        });
+        res.json({ success: true, data: bookings });
+    } catch (error) {
+        logger.error('Error fetching bookings:', error);
+        res.status(500).json({ success: false, error: 'Error fetching bookings' });
+    }
+};
+
+export const getUserBookings = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id, {
+            include: [
+                { association: 'bookings' },           // Changed from clientBookings
+                { association: 'photographerBookings' } // Changed from assignedBookings
+            ]
+        });
+        
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        res.json({ success: true, data: user });
+    } catch (error) {
+        logger.error('Error fetching user bookings:', error);
+        res.status(500).json({ success: false, error: 'Error fetching bookings' });
+    }
+};

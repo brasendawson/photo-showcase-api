@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
+import { connectDB, sequelize } from './config/db.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import photoRoutes from './routes/Photos.js';
@@ -17,7 +17,6 @@ import cors from "cors";
 import favicon from 'serve-favicon'; 
 import path from 'path'; 
 import { fileURLToPath } from 'url';
-import setupAssociations from './models/associations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,8 +33,14 @@ app.use(cors());
 // Connect to database
 connectDB();
 
-// Setup database associations
-setupAssociations();
+// Sync database
+sequelize.sync()
+  .then(() => {
+    console.log('Database synced');
+  })
+  .catch(err => {
+    console.error('Error syncing database:', err);
+  });
 
 // Rate Limiting
 app.use(limiter);

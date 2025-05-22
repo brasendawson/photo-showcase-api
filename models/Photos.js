@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
-const Photo = sequelize.define('Photo', {
+const Photos = sequelize.define('Photos', {
     title: {
         type: DataTypes.STRING,
         allowNull: false
@@ -23,4 +23,4 @@ const Photo = sequelize.define('Photo', {
     }
 });
 
-export default Photo;
+export default Photos;

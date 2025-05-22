@@ -1,6 +1,8 @@
-import { Photo, User } from '../models/index.js';
-import cloudinary from '../utils/cloudinary.js';
+import Photos from '../models/Photos.js';
+import User from '../models/User.js';
+import Review from '../models/Review.js';
 import logger from '../utils/logger.js';
+import cloudinary from '../utils/cloudinary.js';
 import { Readable } from 'stream';
 
 export const createPhoto = async (req, res) => {
@@ -24,7 +26,7 @@ export const createPhoto = async (req, res) => {
     });
 
     // Save to database
-    const photo = await Photo.create({
+    const photo = await Photos.create({
       title: req.body.title,
       imageUrl: uploadResponse.secure_url,
       category: req.body.category,
@@ -38,44 +40,44 @@ export const createPhoto = async (req, res) => {
 };
 
 export const getAllPhotos = async (req, res) => {
-  try {
-    const photos = await Photo.findAll({
-      include: ['photographer', 'reviews'],
-    });
-    res.json({ success: true, data: photos });
-  } catch (error) {
-    logger.error('Error fetching photos:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error fetching photos',
-    });
-  }
+    try {
+        const photos = await Photos.findAll({
+            include: [
+                { association: 'photographer' },  // Changed from imageCreator
+                { association: 'reviews' }        // Changed from photoReviews
+            ]
+        });
+        res.json({ success: true, data: photos });
+    } catch (error) {
+        logger.error('Error fetching photos:', error);
+        res.status(500).json({ success: false, error: 'Error fetching photos' });
+    }
 };
 
 export const getPhotoById = async (req, res) => {
-  try {
-    const photo = await Photo.findByPk(req.params.id, {
-      include: ['photographer', 'reviews'],
-    });
-    if (!photo) {
-      return res.status(404).json({
-        success: false,
-        error: 'Photo not found',
-      });
+    try {
+        const photo = await Photos.findByPk(req.params.id, {
+            include: [
+                { association: 'photographer' },  // Changed from imageCreator
+                { association: 'reviews' },       // Changed from photoReviews
+                { association: 'category' }       // Changed from photoCategory
+            ]
+        });
+        
+        if (!photo) {
+            return res.status(404).json({ success: false, error: 'Photo not found' });
+        }
+        
+        res.json({ success: true, data: photo });
+    } catch (error) {
+        logger.error('Error fetching photo:', error);
+        res.status(500).json({ success: false, error: 'Error fetching photo' });
     }
-    res.json({ success: true, data: photo });
-  } catch (error) {
-    logger.error('Error fetching photo:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error fetching photo',
-    });
-  }
 };
 
 export const updatePhoto = async (req, res) => {
     try {
-        const photo = await Photo.findByPk(req.params.id);
+        const photo = await Photos.findByPk(req.params.id);
         
         if (!photo) {
             return res.status(404).json({
@@ -109,7 +111,7 @@ export const updatePhoto = async (req, res) => {
 
 export const deletePhoto = async (req, res) => {
     try {
-        const photo = await Photo.findByPk(req.params.id);
+        const photo = await Photos.findByPk(req.params.id);
         
         if (!photo) {
             return res.status(404).json({
@@ -143,22 +145,19 @@ export const deletePhoto = async (req, res) => {
 
 export const getPhotosByCategory = async (req, res) => {
     try {
-        const photos = await Photo.findAll({
+        const photos = await Photos.findAll({
             where: {
-                category: req.params.category
+                categoryId: req.params.categoryId
             },
-            include: ['photographer']
+            include: [
+                { association: 'photographer' },  // Changed from imageCreator
+                { association: 'reviews' }        // Changed from photoReviews
+            ]
         });
-
-        res.json({
-            success: true,
-            data: photos
-        });
+        
+        res.json({ success: true, data: photos });
     } catch (error) {
         logger.error('Error fetching photos by category:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Error fetching photos'
-        });
+        res.status(500).json({ success: false, error: 'Error fetching photos' });
     }
 };
