@@ -7,6 +7,13 @@ import { Readable } from 'stream';
 
 export const createPhoto = async (req, res) => {
   try {
+    // Log incoming request
+    console.log('Upload request received:', {
+      file: req.file ? 'Present' : 'Missing',
+      body: req.body,
+      user: req.user.id
+    });
+
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
@@ -14,7 +21,7 @@ export const createPhoto = async (req, res) => {
       });
     }
 
-    // Validate other required fields
+    // Validate required fields
     if (!req.body.title || !req.body.category) {
       return res.status(400).json({
         success: false,
@@ -22,83 +29,69 @@ export const createPhoto = async (req, res) => {
       });
     }
 
-    logger.info('Starting photo upload', {
-      filename: req.file.originalname,
-      size: req.file.size
-    });
-
-    // Upload to Cloudinary with explicit Promise handling
-    const uploadResponse = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "photo-showcase",
-          resource_type: "auto"
-        },
-        (error, result) => {
-          if (error) {
-            logger.error('Cloudinary upload failed:', error);
-            reject(error);
-            return;
+    // Upload to Cloudinary
+    try {
+      const uploadResponse = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: "photo-showcase" },
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload failed:', error);
+              reject(error);
+              return;
+            }
+            console.log('Cloudinary upload successful:', result);
+            resolve(result);
           }
-          // Log the result immediately when we get it
-          logger.info('Cloudinary upload completed', {
-            url: result.secure_url,
-            public_id: result.public_id
-          });
-          resolve(result);
-        }
-      );
+        );
 
-      // Handle stream errors
-      uploadStream.on('error', (error) => {
-        logger.error('Stream error:', error);
-        reject(error);
+        // Create readable stream from buffer and pipe to Cloudinary
+        const stream = new Readable();
+        stream.push(req.file.buffer);
+        stream.push(null);
+        stream.pipe(uploadStream);
       });
 
-      // Send the file to Cloudinary
-      uploadStream.end(req.file.buffer);
-    });
+      console.log('Creating database record with URL:', uploadResponse.secure_url);
 
-    // Immediately check and use the Cloudinary response
-    if (!uploadResponse?.secure_url) {
-      logger.error('No URL in Cloudinary response:', uploadResponse);
-      throw new Error('Upload failed - no URL received');
+      // Create database record
+      const photo = await Photos.create({
+        title: req.body.title,
+        description: req.body.description || '',
+        imageUrl: uploadResponse.secure_url,
+        category: req.body.category,
+        photographerId: req.user.id,
+        isVisible: true,
+        needsReview: false
+      });
+
+      console.log('Database record created:', photo.id);
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          id: photo.id,
+          title: photo.title,
+          imageUrl: photo.imageUrl,
+          category: photo.category,
+          photographerId: photo.photographerId
+        }
+      });
+
+    } catch (uploadError) {
+      console.error('Upload process failed:', uploadError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to process image upload'
+      });
     }
-
-    // Create database record immediately after getting URL
-    const photo = await Photos.create({
-      title: req.body.title,
-      description: req.body.description || '',
-      imageUrl: uploadResponse.secure_url,
-      category: req.body.category,
-      photographerId: req.user.id
-    });
-
-    // Send response immediately after database creation
-    res.status(201).json({ 
-      success: true, 
-      data: {
-        id: photo.id,
-        title: photo.title,
-        imageUrl: uploadResponse.secure_url, // Use the URL directly from Cloudinary response
-        category: photo.category
-      }
-    });
 
   } catch (error) {
-    // If we get here, something went wrong
-    logger.error('Upload process failed:', {
-      error: error.message,
-      stack: error.stack
+    console.error('Photo creation failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Photo upload failed'
     });
-    
-    // Make sure we haven't already sent a response
-    if (!res.headersSent) {
-      res.status(500).json({ 
-        success: false, 
-        error: 'Upload failed. Please try again.' 
-      });
-    }
   }
 };
 

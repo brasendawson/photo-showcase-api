@@ -28,6 +28,7 @@ const router = express.Router();
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
@@ -40,15 +41,32 @@ const router = express.Router();
  *               photo:
  *                 type: string
  *                 format: binary
+ *                 description: Image file (jpg, png, etc.)
  *               title:
  *                 type: string
+ *                 example: "Beautiful Sunset"
  *               description:
  *                 type: string
+ *                 example: "A stunning sunset view"
  *               category:
  *                 type: string
+ *                 example: "landscape"
  *     responses:
  *       201:
  *         description: Photo uploaded successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: 1
+ *                 title: "Beautiful Sunset"
+ *                 imageUrl: "https://res.cloudinary.com/..."
+ *                 category: "landscape"
+ *       400:
+ *         description: Invalid input or file upload error
+ *       401:
+ *         description: Not authenticated
  *   get:
  *     summary: Get all photos
  *     tags: [Photos]
@@ -115,21 +133,35 @@ const router = express.Router();
  */
 
 // Configure multer for memory storage instead of disk
-const storage = multer.memoryStorage();
-
 const upload = multer({ 
-  storage,
-  limits: { fileSize: 5000000 }, // 5MB limit
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5000000 }, // 5MB
   fileFilter: (req, file, cb) => {
+    console.log('Multer processing file:', file.originalname);
     if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image files are allowed'), false);
+      return;
     }
     cb(null, true);
   }
-});
+}).single('photo');
+
+// Wrap upload middleware
+const uploadMiddleware = (req, res, next) => {
+  upload(req, res, (err) => {
+    console.log('Upload middleware executed', { error: err?.message });
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: err.message
+      });
+    }
+    next();
+  });
+};
 
 // Routes
-router.post('/', auth, upload.single('photo'), createPhoto);
+router.post('/', auth, uploadMiddleware, createPhoto);
 router.get('/', getAllPhotos);
 router.get('/:id', getPhotoById);
 router.put('/:id', auth, updatePhoto);
