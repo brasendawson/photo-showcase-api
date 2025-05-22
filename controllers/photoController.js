@@ -117,23 +117,26 @@ export const getAllPhotos = async (req, res) => {
                     attributes: ['rating', 'comment']
                 }
             ],
+            where: req.user?.role === 'admin' ? {} : { isVisible: true }, // Only admins see flagged photos
             attributes: [
                 'id',
                 'title',
                 'description',
-                'imageUrl',  // Cloudinary URL
+                'imageUrl',
                 'category',
-                'createdAt'
+                'createdAt',
+                'isVisible',
+                'needsReview'
             ],
             order: [['createdAt', 'DESC']]
         });
 
-        // Validate Cloudinary URLs
+        // Validate and filter photos
         const validatedPhotos = photos.map(photo => {
             const photoObj = photo.toJSON();
             if (!photoObj.imageUrl.startsWith('https://res.cloudinary.com/')) {
                 logger.warn(`Invalid Cloudinary URL for photo ID ${photoObj.id}`);
-                photoObj.imageUrl = null; // or set a default image
+                photoObj.imageUrl = null;
             }
             return photoObj;
         });
@@ -169,20 +172,55 @@ export const getPhotoById = async (req, res) => {
     try {
         const photo = await Photos.findByPk(req.params.id, {
             include: [
-                { association: 'photographer' },  // Changed from imageCreator
-                { association: 'reviews' },       // Changed from photoReviews
-                { association: 'category' }       // Changed from photoCategory
+                {
+                    model: User,
+                    as: 'photographer',
+                    attributes: ['id', 'username']
+                },
+                {
+                    model: Review,
+                    as: 'reviews',
+                    attributes: ['rating', 'comment']
+                }
             ]
         });
         
         if (!photo) {
-            return res.status(404).json({ success: false, error: 'Photo not found' });
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Photo not found' 
+            });
+        }
+
+        // Check if photo is flagged and user is not admin
+        if (!photo.isVisible && (!req.user || req.user.role !== 'admin')) {
+            return res.status(403).json({
+                success: false,
+                error: 'This photo has been flagged for review and is temporarily unavailable'
+            });
         }
         
-        res.json({ success: true, data: photo });
+        res.json({ 
+            success: true, 
+            data: {
+                id: photo.id,
+                title: photo.title,
+                description: photo.description,
+                imageUrl: photo.imageUrl,
+                category: photo.category,
+                photographerId: photo.photographerId,
+                photographer: photo.photographer,
+                reviews: photo.reviews,
+                createdAt: photo.createdAt,
+                updatedAt: photo.updatedAt
+            }
+        });
     } catch (error) {
         logger.error('Error fetching photo:', error);
-        res.status(500).json({ success: false, error: 'Error fetching photo' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error fetching photo' 
+        });
     }
 };
 
@@ -258,17 +296,21 @@ export const getPhotosByCategory = async (req, res) => {
     try {
         const photos = await Photos.findAll({
             where: {
-                categoryId: req.params.categoryId
+                categoryId: req.params.categoryId,
+                ...(req.user?.role !== 'admin' && { isVisible: true }) // Only admins see flagged photos
             },
             include: [
-                { association: 'photographer' },  // Changed from imageCreator
-                { association: 'reviews' }        // Changed from photoReviews
+                { association: 'photographer' },
+                { association: 'reviews' }
             ]
         });
         
         res.json({ success: true, data: photos });
     } catch (error) {
         logger.error('Error fetching photos by category:', error);
-        res.status(500).json({ success: false, error: 'Error fetching photos' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Error fetching photos' 
+        });
     }
 };

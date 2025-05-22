@@ -29,6 +29,11 @@ const User = sequelize.define('User', {
                 msg: 'Role must be either user, photographer, or admin'
             }
         }
+    },
+    isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+        allowNull: false
     }
 });
 

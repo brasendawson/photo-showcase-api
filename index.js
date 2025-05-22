@@ -17,6 +17,7 @@ import cors from "cors";
 import favicon from 'serve-favicon'; 
 import path from 'path'; 
 import { fileURLToPath } from 'url';
+import adminRoutes from './routes/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,6 +56,7 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error Handler
 app.use(errorHandler);

@@ -23,6 +23,22 @@ const Review = sequelize.define('Review', {
     comment: {
         type: DataTypes.TEXT,
         allowNull: false
+    },
+    isModerated: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+        defaultValue: 'pending'
+    },
+    isVisible: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    needsReview: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 });
 
