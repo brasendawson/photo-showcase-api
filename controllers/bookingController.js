@@ -4,15 +4,55 @@ import logger from '../utils/logger.js';
 
 export const createBooking = async (req, res) => {
     try {
+        // First check if photographer exists and is actually a photographer
+        const photographer = await User.findOne({
+            where: {
+                id: req.body.photographerId,
+                role: 'photographer'
+            }
+        });
+
+        if (!photographer) {
+            return res.status(404).json({
+                success: false,
+                error: 'Photographer not found'
+            });
+        }
+
+        // Validate that user isn't booking themselves
+        if (req.user.id === req.body.photographerId) {
+            return res.status(400).json({
+                success: false,
+                error: 'You cannot book yourself'
+            });
+        }
+
+        // Create the booking
         const booking = await Booking.create({
             ...req.body,
             userId: req.user.id,
             status: 'pending'
         });
 
+        // Fetch the complete booking with correct aliases
+        const completeBooking = await Booking.findByPk(booking.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'bookingPhotographer',
+                    attributes: ['username', 'email']
+                },
+                {
+                    model: User,
+                    as: 'bookingClient',
+                    attributes: ['username', 'email']
+                }
+            ]
+        });
+
         res.status(201).json({
             success: true,
-            data: booking
+            data: completeBooking
         });
     } catch (error) {
         logger.error('Booking creation failed:', error);
@@ -29,7 +69,7 @@ export const getMyBookings = async (req, res) => {
             where: { userId: req.user.id },
             include: [{
                 model: User,
-                as: 'photographer',
+                as: 'bookingPhotographer',  // Updated alias
                 attributes: ['username', 'email']
             }]
         });
@@ -53,7 +93,7 @@ export const getPhotographerBookings = async (req, res) => {
             where: { photographerId: req.params.id },
             include: [{
                 model: User,
-                as: 'client',
+                as: 'bookingClient',  // Updated alias
                 attributes: ['username', 'email']
             }]
         });

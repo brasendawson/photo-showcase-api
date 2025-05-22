@@ -17,7 +17,7 @@ import cors from "cors";
 import favicon from 'serve-favicon'; 
 import path from 'path'; 
 import { fileURLToPath } from 'url';
-
+import setupAssociations from './models/associations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +33,9 @@ app.use(cors());
 
 // Connect to database
 connectDB();
+
+// Setup database associations
+setupAssociations();
 
 // Rate Limiting
 app.use(limiter);

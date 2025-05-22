@@ -34,9 +34,7 @@ const Booking = sequelize.define('Booking', {
         type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'),
         defaultValue: 'pending'
     },
-    notes: {
-        type: DataTypes.TEXT
-    }
+    notes: DataTypes.TEXT
 });
 
 export default Booking;

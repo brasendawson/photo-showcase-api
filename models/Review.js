@@ -2,6 +2,14 @@ import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
 const Review = sequelize.define('Review', {
+    userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    photoId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
     rating: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -13,22 +21,6 @@ const Review = sequelize.define('Review', {
     comment: {
         type: DataTypes.TEXT,
         allowNull: false
-    },
-    userId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'Users',
-            key: 'id'
-        }
-    },
-    photoId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'Photos',
-            key: 'id'
-        }
     }
 });
 

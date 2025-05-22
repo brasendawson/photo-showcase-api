@@ -1,4 +1,4 @@
-import Photo from '../models/Photos.js';
+import { Photo, User } from '../models/index.js';
 import cloudinary from '../utils/cloudinary.js';
 import logger from '../utils/logger.js';
 import { Readable } from 'stream';
