@@ -44,13 +44,10 @@ const router = express.Router();
  *                 description: Image file (jpg, png, etc.)
  *               title:
  *                 type: string
- *                 example: "Beautiful Sunset"
  *               description:
  *                 type: string
- *                 example: "A stunning sunset view"
  *               category:
  *                 type: string
- *                 example: "landscape"
  *     responses:
  *       201:
  *         description: Photo uploaded successfully
