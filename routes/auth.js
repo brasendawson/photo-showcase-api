@@ -33,15 +33,23 @@ const router = express.Router();
  *               - username
  *               - email
  *               - password
+ *               - role
  *             properties:
  *               username:
  *                 type: string
+ *                 example: johndoe
  *               email:
  *                 type: string
  *                 format: email
+ *                 example: john@example.com
  *               password:
  *                 type: string
  *                 format: password
+ *                 example: securePassword123!
+ *               role:
+ *                 type: string
+ *                 enum: [user, photographer, admin]
+ *                 example: user
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -103,7 +111,20 @@ const router = express.Router();
 // Register
 router.post('/register', validateRegistration, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
+
+    // Validate role
+    const validRoles = ['user', 'photographer', 'admin'];
+    if (!validRoles.includes(role)) {
+      logger.error('Registration failed - Invalid role', {
+        username,
+        role,
+        event: 'registration_invalid_role'
+      });
+      return res.status(400).json({ 
+        message: 'Invalid role specified'
+      });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { 
@@ -127,10 +148,20 @@ router.post('/register', validateRegistration, async (req, res) => {
     const user = await User.create({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role // Explicitly set role from request
     });
 
-    res.status(201).json({ message: 'User created successfully' });
+    logger.info('User registered successfully', {
+      username,
+      role,
+      event: 'registration_success'
+    });
+
+    res.status(201).json({ 
+      message: 'User created successfully',
+      role: user.role // Include role in response
+    });
   } catch (err) {
     logger.error('Registration failed', {
         username: req.body.username,

@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
+import User from './User.js';
 
 const Photos = sequelize.define('Photos', {
     title: {
@@ -19,8 +20,26 @@ const Photos = sequelize.define('Photos', {
     },
     photographerId: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        references: {
+            model: User,
+            key: 'id'
+        }
     }
 });
 
+// Only define the User association here
+Photos.belongsTo(User, {
+    foreignKey: 'photographerId',
+    as: 'photographer'
+});
+
 export default Photos;
+
+// Add this after export to avoid circular dependency
+export const setupPhotoReviews = (Review) => {
+    Photos.hasMany(Review, {
+        foreignKey: 'photoId',
+        as: 'reviews'
+    });
+};

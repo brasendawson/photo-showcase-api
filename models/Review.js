@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
+import Photos, { setupPhotoReviews } from './Photos.js';
+import User from './User.js';
 
 const Review = sequelize.define('Review', {
     userId: {
@@ -23,5 +25,19 @@ const Review = sequelize.define('Review', {
         allowNull: false
     }
 });
+
+// Add associations
+Review.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'user'
+});
+
+Review.belongsTo(Photos, {
+    foreignKey: 'photoId',
+    as: 'photo'
+});
+
+// Setup the reverse association
+setupPhotoReviews(Review);
 
 export default Review;
