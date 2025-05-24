@@ -62,7 +62,7 @@ Photo Showcase API is a complete backend solution for photography services. It h
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/photo-showcase-api.git
+   git clone https://github.com/brasendawson/photo-showcase-api.git
    cd photo-showcase-api
    ```
 
