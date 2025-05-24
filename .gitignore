@@ -34,6 +34,10 @@ Thumbs.db
 coverage/
 .nyc_output/
 postman-tests.md
+environment.json
+test-photo.jpg
+Photo-Showcase-API.postman_collection.json
+newman/
 
 # Production build
 dist/

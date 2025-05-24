@@ -4,27 +4,35 @@ import logger from '../utils/logger.js';
 export const createCategory = async (req, res) => {
     try {
         const { name, description } = req.body;
-
-        // Create slug from name
-        const slug = name.toLowerCase().replace(/\s+/g, '-');
-
+        
+        // Check if category exists
+        const existingCategory = await Category.findOne({ where: { name } });
+        
+        if (existingCategory) {
+            // Return the existing category with a 200 status instead of error
+            return res.status(200).json({
+                success: true,
+                data: existingCategory,
+                message: "Category already exists"
+            });
+        }
+        
+        // Otherwise create new category
         const category = await Category.create({
             name,
             description,
-            slug
+            slug: name.toLowerCase().replace(/\s+/g, '-')
         });
-
-        res.status(201).json({
+        
+        return res.status(201).json({
             success: true,
             data: category
         });
     } catch (error) {
         logger.error('Category creation failed:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            error: error.name === 'SequelizeUniqueConstraintError' 
-                ? 'Category already exists' 
-                : 'Error creating category'
+            error: error.message || "Error creating category"
         });
     }
 };

@@ -1,4 +1,6 @@
 import Review from '../models/Review.js';
+import Photos from '../models/Photos.js';  // Correct import
+import User from '../models/User.js';
 import logger from '../utils/logger.js';
 
 export const createReview = async (req, res) => {
@@ -24,18 +26,37 @@ export const createReview = async (req, res) => {
 
 export const getPhotoReviews = async (req, res) => {
     try {
+        const photoId = req.params.photoId;
+        
+        // First check if the photo exists
+        const photo = await Photos.findByPk(photoId);  // Changed from Photo to Photos
+        
+        if (!photo) {
+            return res.status(404).json({
+                success: false,
+                error: "Photo not found"
+            });
+        }
+        
+        // If photo exists, get its reviews
         const reviews = await Review.findAll({
-            where: { photoId: req.params.photoId },
-            include: ['user']
+            where: { photoId },
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'username']
+                }
+            ]
         });
-
-        res.json({
+        
+        return res.status(200).json({
             success: true,
             data: reviews
         });
     } catch (error) {
-        logger.error('Error fetching reviews:', error);
-        res.status(500).json({
+        logger.error('Error fetching photo reviews:', error);
+        return res.status(500).json({
             success: false,
             error: 'Error fetching reviews'
         });

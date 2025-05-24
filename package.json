@@ -24,7 +24,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "newman run Photo-Showcase-API.postman_collection.json -e environment.json",
+    "test:report": "newman run Photo-Showcase-API.postman_collection.json -e environment.json -r htmlextra"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +37,8 @@
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1",
     "supertest": "^7.1.1"
   }
 }
