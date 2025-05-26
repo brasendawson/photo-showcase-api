@@ -1,6 +1,6 @@
-# Photo Showcase API
+# Photography Studio API
 
-A RESTful API for a photography showcase and booking platform that allows users to browse photographers, view their work, and book photography sessions.
+A RESTful API for a photography studio service that enables clients to browse photos, book photography sessions, and allows photographers to manage their bookings.
 
 ## Table of Contents
 
@@ -13,12 +13,10 @@ A RESTful API for a photography showcase and booking platform that allows users 
   - Environment Setup
 - API Documentation
   - Authentication Endpoints
-  - User Endpoints
-  - Photo Endpoints
-  - Category Endpoints
+  - Photo Gallery Endpoints
   - Booking Endpoints
-  - Review Endpoints
   - Admin Endpoints
+  - Profile Picture Endpoints
 - Database Schema
 - Testing
 - Error Handling
@@ -27,17 +25,16 @@ A RESTful API for a photography showcase and booking platform that allows users 
 
 ## Overview
 
-Photo Showcase API is a complete backend solution for photography services. It handles user registration, authentication, portfolio management, session booking, and reviews.
+Photography Studio API is a complete backend solution for photography services. It handles user registration, authentication, photo gallery management, and session booking for a photography studio.
 
 ## Features
 
 - User authentication with JWT
 - Role-based access control (admin, photographer, client)
-- Photo upload and management
-- Category organization for photos
+- Photo gallery management by admins
 - Booking system for photography sessions
-- Review and rating system
-- Admin dashboard for platform management
+- Photographer assignment to bookings
+- Booking management for all user roles
 
 ## Technology Stack
 
@@ -47,8 +44,7 @@ Photo Showcase API is a complete backend solution for photography services. It h
 - **Authentication**: JWT (JSON Web Tokens)
 - **Documentation**: Swagger UI
 - **Testing**: Postman Collection
-- **Logging**: Custom logger
-- **Rate Limiting**: Express Rate Limit
+- **Security**: Helmet, XSS-Clean, Express Rate Limit
 
 ## Getting Started
 
@@ -62,8 +58,8 @@ Photo Showcase API is a complete backend solution for photography services. It h
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/brasendawson/photo-showcase-api.git
-   cd photo-showcase-api
+   git clone https://github.com/brasendawson/photography-studio-api.git
+   cd photography-studio-api
    ```
 
 2. Install dependencies:
@@ -71,9 +67,15 @@ Photo Showcase API is a complete backend solution for photography services. It h
    npm install
    ```
 
-3. Create a `.env` file in the config directory with your environment variables (see Environment Setup).
+3. Create a `.env` file in the root directory with your environment variables (see Environment Setup).
 
-4. Start the server:
+4. Make sure to create an "uploads" directory for profile pictures:
+   ```bash
+   mkdir uploads
+   mkdir uploads/profiles
+   ```
+
+5. Start the server:
    ```bash
    npm start
    ```
@@ -85,7 +87,7 @@ npm run dev
 
 ### Environment Setup
 
-Create a `.env` file in the config directory with the following variables:
+Create a `.env` file in the root directory with the following variables:
 
 ```
 # Server Configuration
@@ -96,19 +98,11 @@ NODE_ENV=development
 DB_HOST=localhost
 DB_USER=yourusername
 DB_PASS=yourpassword
-DB_NAME=photo_showcase
+DB_NAME=photography_studio_db
 
 # JWT Configuration
 JWT_SECRET=your_secret_key
-JWT_EXPIRE=24h
-
-# File Upload Configuration
-UPLOAD_DIR=uploads
-MAX_FILE_SIZE=5000000
-
-# Rate Limiting
-RATE_LIMIT_WINDOW=15
-RATE_LIMIT_MAX=100
+JWT_LIFETIME=1d
 ```
 
 ## API Documentation
@@ -122,21 +116,21 @@ RATE_LIMIT_MAX=100
 - **Body**:
   ```json
   {
-    "username": "johndoe",
+    "name": "John Doe",
     "email": "john@example.com",
     "password": "securepassword",
-    "role": "client"
+    "role": "client",
+    "phone": "555-123-4567"
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "success": true,
-    "data": {
-      "id": 1,
-      "username": "johndoe",
+    "user": {
+      "name": "John Doe",
       "email": "john@example.com",
-      "role": "client"
+      "role": "client",
+      "id": 1
     },
     "token": "jwt_token_here"
   }
@@ -156,199 +150,168 @@ RATE_LIMIT_MAX=100
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {
-      "id": 1,
-      "username": "johndoe",
+    "user": {
+      "name": "John Doe",
       "email": "john@example.com",
-      "role": "client"
+      "role": "client",
+      "id": 1
     },
     "token": "jwt_token_here"
   }
   ```
 
-### User Endpoints
+#### Logout User
 
-#### Get Current User Profile
-
-- **URL**: `/api/auth/me`
-- **Method**: `GET`
-- **Headers**: `Authorization: Bearer jwt_token_here`
+- **URL**: `/api/auth/logout`
+- **Method**: `POST`
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com",
-      "role": "client",
-      "bio": "Photography enthusiast",
-      "createdAt": "2023-01-01T00:00:00.000Z"
-    }
+    "msg": "User logged out!"
   }
   ```
 
-#### Update User Profile
-
-- **URL**: `/api/auth/me`
-- **Method**: `PUT`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "bio": "Photography enthusiast and nature lover",
-    "password": "newsecurepassword"
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 1,
-      "username": "johndoe",
-      "email": "john@example.com",
-      "role": "client",
-      "bio": "Photography enthusiast and nature lover",
-      "updatedAt": "2023-01-02T00:00:00.000Z"
-    }
-  }
-  ```
-
-### Photo Endpoints
+### Photo Gallery Endpoints
 
 #### Get All Photos
 
 - **URL**: `/api/photos`
 - **Method**: `GET`
 - **Query Parameters**:
-  - `page`: Page number for pagination (default: 1)
-  - `limit`: Number of photos per page (default: 10)
-  - `category`: Filter by category ID
-  - `photographer`: Filter by photographer ID
+  - `type`: Filter by photo type (portrait, wedding, event, landscape, commercial, other)
+  - `featured`: Filter by featured status (true/false)
+  - `sort`: Sort field(s) with direction (e.g., createdAt:desc)
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "count": 50,
-    "pagination": {
-      "currentPage": 1,
-      "totalPages": 5,
-      "nextPage": 2,
-      "prevPage": null
-    },
-    "data": [
+    "photos": [
       {
         "id": 1,
-        "title": "Beach Sunset",
-        "description": "Beautiful sunset at the beach",
-        "imageUrl": "/uploads/photos/beach-sunset.jpg",
-        "photographerId": 2,
-        "categoryId": 3,
-        "createdAt": "2023-01-01T00:00:00.000Z",
-        "photographer": {
-          "id": 2,
-          "username": "janephotographer"
-        },
-        "category": {
-          "id": 3,
-          "name": "Landscape"
-        }
+        "title": "Beach Wedding",
+        "description": "Beautiful beach wedding photoshoot",
+        "imageUrl": "https://example.com/photos/beach-wedding.jpg",
+        "photographerName": "Jane Smith",
+        "type": "wedding",
+        "featured": true,
+        "createdAt": "2023-05-10T14:30:00.000Z",
+        "updatedAt": "2023-05-10T14:30:00.000Z"
       }
-    ]
+    ],
+    "count": 1
   }
   ```
 
-#### Get Photo by ID
+#### Get Gallery Photos (Paginated)
+
+- **URL**: `/api/photos/gallery`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `type`: Filter by photo type
+  - `limit`: Number of photos per page (default: 20)
+  - `page`: Page number (default: 1)
+- **Response**: `200 OK`
+  ```json
+  {
+    "photos": [
+      {
+        "title": "Beach Wedding",
+        "imageUrl": "https://example.com/photos/beach-wedding.jpg",
+        "type": "wedding",
+        "photographerName": "Jane Smith"
+      }
+    ],
+    "count": 1,
+    "totalPhotos": 30,
+    "numOfPages": 2,
+    "currentPage": 1
+  }
+  ```
+
+#### Get Single Photo
 
 - **URL**: `/api/photos/:id`
 - **Method**: `GET`
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {
+    "photo": {
       "id": 1,
-      "title": "Beach Sunset",
-      "description": "Beautiful sunset at the beach",
-      "imageUrl": "/uploads/photos/beach-sunset.jpg",
-      "photographerId": 2,
-      "categoryId": 3,
-      "createdAt": "2023-01-01T00:00:00.000Z",
-      "photographer": {
-        "id": 2,
-        "username": "janephotographer",
-        "email": "jane@example.com",
-        "bio": "Professional photographer specializing in landscapes"
-      },
-      "category": {
-        "id": 3,
-        "name": "Landscape",
-        "description": "Landscape photography"
-      }
+      "title": "Beach Wedding",
+      "description": "Beautiful beach wedding photoshoot",
+      "imageUrl": "https://example.com/photos/beach-wedding.jpg",
+      "photographerName": "Jane Smith",
+      "type": "wedding",
+      "featured": true,
+      "createdAt": "2023-05-10T14:30:00.000Z",
+      "updatedAt": "2023-05-10T14:30:00.000Z"
     }
   }
   ```
 
-#### Upload New Photo (Photographer Only)
+#### Add Photo to Gallery (Admin Only)
 
 - **URL**: `/api/photos`
 - **Method**: `POST`
-- **Headers**: 
-  - `Authorization: Bearer jwt_token_here`
-  - `Content-Type: multipart/form-data`
-- **Body**:
-  - `title`: Photo title
-  - `description`: Photo description
-  - `categoryId`: Category ID
-  - `image`: Image file
-- **Response**: `201 Created`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 51,
-      "title": "Mountain Lake",
-      "description": "Serene mountain lake at dawn",
-      "imageUrl": "/uploads/photos/mountain-lake.jpg",
-      "photographerId": 2,
-      "categoryId": 3,
-      "createdAt": "2023-01-05T00:00:00.000Z"
-    }
-  }
-  ```
-
-#### Update Photo (Owner or Admin Only)
-
-- **URL**: `/api/photos/:id`
-- **Method**: `PUT`
 - **Headers**: `Authorization: Bearer jwt_token_here`
 - **Body**:
   ```json
   {
-    "title": "Mountain Lake Dawn",
-    "description": "Updated description with more details",
-    "categoryId": 4
+    "title": "Family Portrait",
+    "description": "Professional family portrait session",
+    "imageUrl": "https://example.com/photos/family-portrait.jpg",
+    "photographerName": "Jane Smith",
+    "type": "portrait",
+    "featured": false
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "photo": {
+      "id": 2,
+      "title": "Family Portrait",
+      "description": "Professional family portrait session",
+      "imageUrl": "https://example.com/photos/family-portrait.jpg",
+      "photographerName": "Jane Smith",
+      "type": "portrait",
+      "featured": false,
+      "createdAt": "2023-05-15T10:20:00.000Z",
+      "updatedAt": "2023-05-15T10:20:00.000Z"
+    }
+  }
+  ```
+
+#### Update Photo (Admin Only)
+
+- **URL**: `/api/photos/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "title": "Updated Family Portrait",
+    "description": "Updated description for family portrait",
+    "featured": true
   }
   ```
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {
-      "id": 51,
-      "title": "Mountain Lake Dawn",
-      "description": "Updated description with more details",
-      "imageUrl": "/uploads/photos/mountain-lake.jpg",
-      "photographerId": 2,
-      "categoryId": 4,
-      "updatedAt": "2023-01-06T00:00:00.000Z"
+    "photo": {
+      "id": 2,
+      "title": "Updated Family Portrait",
+      "description": "Updated description for family portrait",
+      "imageUrl": "https://example.com/photos/family-portrait.jpg",
+      "photographerName": "Jane Smith",
+      "type": "portrait",
+      "featured": true,
+      "createdAt": "2023-05-15T10:20:00.000Z",
+      "updatedAt": "2023-05-15T11:30:00.000Z"
     }
   }
   ```
 
-#### Delete Photo (Owner or Admin Only)
+#### Delete Photo (Admin Only)
 
 - **URL**: `/api/photos/:id`
 - **Method**: `DELETE`
@@ -356,124 +319,13 @@ RATE_LIMIT_MAX=100
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {}
-  }
-  ```
-
-### Category Endpoints
-
-#### Get All Categories
-
-- **URL**: `/api/categories`
-- **Method**: `GET`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "count": 5,
-    "data": [
-      {
-        "id": 1,
-        "name": "Portrait",
-        "description": "Portrait photography"
-      },
-      {
-        "id": 2,
-        "name": "Wedding",
-        "description": "Wedding photography"
-      }
-    ]
-  }
-  ```
-
-#### Get Category by ID
-
-- **URL**: `/api/categories/:id`
-- **Method**: `GET`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 3,
-      "name": "Landscape",
-      "description": "Landscape photography",
-      "photos": [
-        {
-          "id": 1,
-          "title": "Beach Sunset",
-          "imageUrl": "/uploads/photos/beach-sunset.jpg"
-        }
-      ]
-    }
-  }
-  ```
-
-#### Create Category (Admin Only)
-
-- **URL**: `/api/categories`
-- **Method**: `POST`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "name": "Wildlife",
-    "description": "Wildlife photography"
-  }
-  ```
-- **Response**: `201 Created`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 6,
-      "name": "Wildlife",
-      "description": "Wildlife photography"
-    }
-  }
-  ```
-
-#### Update Category (Admin Only)
-
-- **URL**: `/api/categories/:id`
-- **Method**: `PUT`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "name": "Wildlife & Nature",
-    "description": "Wildlife and nature photography"
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 6,
-      "name": "Wildlife & Nature",
-      "description": "Wildlife and nature photography"
-    }
-  }
-  ```
-
-#### Delete Category (Admin Only)
-
-- **URL**: `/api/categories/:id`
-- **Method**: `DELETE`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {}
+    "msg": "Success! Photo deleted."
   }
   ```
 
 ### Booking Endpoints
 
-#### Create Booking
+#### Create Booking (Client)
 
 - **URL**: `/api/bookings`
 - **Method**: `POST`
@@ -481,68 +333,125 @@ RATE_LIMIT_MAX=100
 - **Body**:
   ```json
   {
-    "photographerId": 2,
-    "date": "2023-06-15T14:00:00.000Z",
+    "fullName": "John Doe",
+    "email": "john@example.com",
+    "phoneNumber": "555-123-4567",
+    "sessionType": "wedding",
+    "date": "2023-12-01",
+    "time": "15:30",
     "location": "Central Park",
-    "package": "Standard",
-    "notes": "Family photoshoot"
+    "additionalDetails": "Looking for a wedding photographer for 3 hours"
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
-    "success": true,
-    "data": {
+    "booking": {
       "id": 1,
-      "userId": 3,
-      "photographerId": 2,
-      "date": "2023-06-15T14:00:00.000Z",
+      "fullName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "555-123-4567",
+      "sessionType": "wedding",
+      "date": "2023-12-01",
+      "time": "15:30",
       "location": "Central Park",
-      "package": "Standard",
-      "notes": "Family photoshoot",
+      "additionalDetails": "Looking for a wedding photographer for 3 hours",
       "status": "pending",
-      "photographer": {
-        "id": 2,
-        "username": "janephotographer",
-        "email": "jane@example.com"
-      },
-      "client": {
-        "id": 3,
-        "username": "client_user",
-        "email": "client@example.com"
-      }
+      "client": 1,
+      "createdAt": "2023-05-20T09:15:00.000Z",
+      "updatedAt": "2023-05-20T09:15:00.000Z"
     }
   }
   ```
 
-#### Get My Bookings (Client)
+#### Get Client's Bookings
 
-- **URL**: `/api/bookings`
+- **URL**: `/api/bookings/my-bookings`
 - **Method**: `GET`
 - **Headers**: `Authorization: Bearer jwt_token_here`
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "count": 2,
-    "data": [
+    "bookings": [
       {
         "id": 1,
-        "date": "2023-06-15T14:00:00.000Z",
+        "fullName": "John Doe",
+        "email": "john@example.com",
+        "sessionType": "wedding",
+        "date": "2023-12-01",
+        "time": "15:30",
         "location": "Central Park",
-        "package": "Standard",
         "status": "pending",
-        "photographer": {
-          "id": 2,
-          "username": "janephotographer",
-          "email": "jane@example.com"
-        }
+        "createdAt": "2023-05-20T09:15:00.000Z",
+        "assignedPhotographer": null
       }
-    ]
+    ],
+    "count": 1
   }
   ```
 
-#### Get Photographer Bookings
+#### Get Specific Client Booking
+
+- **URL**: `/api/bookings/my-bookings/:id`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Response**: `200 OK`
+  ```json
+  {
+    "booking": {
+      "id": 1,
+      "fullName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "555-123-4567",
+      "sessionType": "wedding",
+      "date": "2023-12-01",
+      "time": "15:30",
+      "location": "Central Park",
+      "additionalDetails": "Looking for a wedding photographer for 3 hours",
+      "status": "pending",
+      "client": 1,
+      "assignedPhotographer": null,
+      "createdAt": "2023-05-20T09:15:00.000Z",
+      "updatedAt": "2023-05-20T09:15:00.000Z"
+    }
+  }
+  ```
+
+#### Update Client Booking
+
+- **URL**: `/api/bookings/my-bookings/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "location": "City Hall",
+    "additionalDetails": "Changed venue to City Hall instead of Central Park"
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "booking": {
+      "id": 1,
+      "fullName": "John Doe",
+      "email": "john@example.com",
+      "phoneNumber": "555-123-4567",
+      "sessionType": "wedding",
+      "date": "2023-12-01",
+      "time": "15:30",
+      "location": "City Hall",
+      "additionalDetails": "Changed venue to City Hall instead of Central Park",
+      "status": "pending",
+      "client": 1,
+      "assignedPhotographer": null,
+      "createdAt": "2023-05-20T09:15:00.000Z",
+      "updatedAt": "2023-05-20T10:30:00.000Z"
+    }
+  }
+  ```
+
+#### Get Photographer's Assigned Bookings
 
 - **URL**: `/api/bookings/photographer`
 - **Method**: `GET`
@@ -550,55 +459,60 @@ RATE_LIMIT_MAX=100
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "count": 3,
-    "data": [
+    "bookings": [
       {
         "id": 1,
-        "date": "2023-06-15T14:00:00.000Z",
-        "location": "Central Park",
-        "package": "Standard",
-        "status": "pending",
+        "fullName": "John Doe",
+        "email": "john@example.com",
+        "phoneNumber": "555-123-4567",
+        "sessionType": "wedding",
+        "date": "2023-12-01",
+        "time": "15:30",
+        "location": "City Hall",
+        "status": "confirmed",
         "client": {
-          "id": 3,
-          "username": "client_user",
-          "email": "client@example.com"
+          "id": 1,
+          "name": "John Doe",
+          "email": "john@example.com",
+          "phoneNumber": "555-123-4567"
         }
       }
-    ]
+    ],
+    "count": 1
   }
   ```
 
-#### Update Booking
+#### Update Booking (Photographer)
 
 - **URL**: `/api/bookings/:id`
 - **Method**: `PUT`
 - **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body** (Client can update location, date, notes):
-  ```json
-  {
-    "location": "Battery Park",
-    "notes": "Changed location for better lighting"
-  }
-  ```
-- **Body** (Photographer can update status, notes):
+- **Body**:
   ```json
   {
     "status": "confirmed",
-    "notes": "Looking forward to the session!"
+    "additionalDetails": "Looking forward to meeting you for the wedding shoot!"
   }
   ```
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "data": {
+    "booking": {
       "id": 1,
-      "date": "2023-06-15T14:00:00.000Z",
-      "location": "Battery Park",
-      "package": "Standard",
-      "notes": "Changed location for better lighting",
-      "status": "confirmed"
+      "status": "confirmed",
+      "additionalDetails": "Looking forward to meeting you for the wedding shoot!",
+      "updatedAt": "2023-05-25T14:20:00.000Z",
+      "client": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phoneNumber": "555-123-4567"
+      },
+      "assignedPhotographer": {
+        "id": 2,
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      }
     }
   }
   ```
@@ -611,209 +525,147 @@ RATE_LIMIT_MAX=100
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "message": "Booking cancelled successfully"
+    "message": "Booking cancelled successfully",
+    "booking": {
+      "id": 1,
+      "status": "cancelled",
+      "updatedAt": "2023-05-26T09:15:00.000Z"
+    }
   }
   ```
 
-### Review Endpoints
+#### Get All Bookings (Admin Only)
 
-#### Create Review
+- **URL**: `/api/bookings/all`
+- **Method**: `GET`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Response**: `200 OK`
+  ```json
+  {
+    "bookings": [
+      {
+        "id": 1,
+        "fullName": "John Doe",
+        "email": "john@example.com",
+        "sessionType": "wedding",
+        "date": "2023-12-01",
+        "time": "15:30",
+        "location": "City Hall",
+        "status": "confirmed",
+        "client": {
+          "id": 1,
+          "name": "John Doe",
+          "email": "john@example.com"
+        },
+        "assignedPhotographer": {
+          "id": 2,
+          "name": "Jane Smith",
+          "email": "jane@example.com"
+        }
+      }
+    ],
+    "count": 1
+  }
+  ```
 
-- **URL**: `/api/reviews`
+#### Assign Photographer to Booking (Admin Only)
+
+- **URL**: `/api/bookings/:id/assign`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "photographerId": 2
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "booking": {
+      "id": 1,
+      "status": "confirmed",
+      "assignedPhotographer": {
+        "id": 2,
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      },
+      "client": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phoneNumber": "555-123-4567"
+      },
+      "updatedAt": "2023-05-27T11:30:00.000Z"
+    }
+  }
+  ```
+
+#### Update Booking Status (Admin Only)
+
+- **URL**: `/api/bookings/:id/status`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "status": "completed"
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "booking": {
+      "id": 1,
+      "status": "completed",
+      "updatedAt": "2023-05-28T16:45:00.000Z"
+    }
+  }
+  ```
+
+### Profile Picture Endpoints
+
+#### Upload Profile Picture
+
+- **URL**: `/api/profile/picture`
 - **Method**: `POST`
 - **Headers**: `Authorization: Bearer jwt_token_here`
+- **Content-Type**: `multipart/form-data`
 - **Body**:
-  ```json
-  {
-    "photographerId": 2,
-    "rating": 5,
-    "comment": "Excellent photographer, highly recommended!"
-  }
-  ```
-- **Response**: `201 Created`
+  - `profilePicture`: Image file (JPG, PNG, etc.)
+- **Response**: `200 OK`
   ```json
   {
     "success": true,
-    "data": {
-      "id": 1,
-      "userId": 3,
-      "photographerId": 2,
-      "rating": 5,
-      "comment": "Excellent photographer, highly recommended!",
-      "createdAt": "2023-01-20T00:00:00.000Z"
-    }
+    "message": "Profile picture updated successfully",
+    "profilePicture": "/uploads/profiles/profile-1-123456789.jpg"
   }
   ```
 
-#### Get Reviews for a Photographer
+#### Get Profile Picture
 
-- **URL**: `/api/reviews/photographer/:id`
+- **URL**: `/api/profile/picture`
 - **Method**: `GET`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "count": 10,
-    "averageRating": 4.8,
-    "data": [
-      {
-        "id": 1,
-        "rating": 5,
-        "comment": "Excellent photographer, highly recommended!",
-        "createdAt": "2023-01-20T00:00:00.000Z",
-        "user": {
-          "id": 3,
-          "username": "client_user"
-        }
-      }
-    ]
-  }
-  ```
-
-#### Update Review
-
-- **URL**: `/api/reviews/:id`
-- **Method**: `PUT`
 - **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "rating": 4,
-    "comment": "Updated review after second session. Still very good!"
-  }
-  ```
 - **Response**: `200 OK`
   ```json
   {
     "success": true,
-    "data": {
-      "id": 1,
-      "rating": 4,
-      "comment": "Updated review after second session. Still very good!",
-      "updatedAt": "2023-01-25T00:00:00.000Z"
-    }
+    "profilePicture": "/uploads/profiles/profile-1-123456789.jpg"
   }
   ```
 
-#### Delete Review
+#### Delete Profile Picture (Reset to Default)
 
-- **URL**: `/api/reviews/:id`
+- **URL**: `/api/profile/picture`
 - **Method**: `DELETE`
 - **Headers**: `Authorization: Bearer jwt_token_here`
 - **Response**: `200 OK`
   ```json
   {
     "success": true,
-    "data": {}
-  }
-  ```
-
-### Admin Endpoints
-
-#### Get All Users (Admin Only)
-
-- **URL**: `/api/admin/users`
-- **Method**: `GET`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "count": 20,
-    "data": [
-      {
-        "id": 1,
-        "username": "admin_user",
-        "email": "admin@example.com",
-        "role": "admin",
-        "createdAt": "2023-01-01T00:00:00.000Z"
-      },
-      {
-        "id": 2,
-        "username": "janephotographer",
-        "email": "jane@example.com",
-        "role": "photographer",
-        "createdAt": "2023-01-01T00:00:00.000Z"
-      }
-    ]
-  }
-  ```
-
-#### Update User Role (Admin Only)
-
-- **URL**: `/api/admin/users/:id`
-- **Method**: `PUT`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "role": "photographer"
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": 3,
-      "username": "client_user",
-      "email": "client@example.com",
-      "role": "photographer",
-      "updatedAt": "2023-01-25T00:00:00.000Z"
-    }
-  }
-  ```
-
-#### Delete User (Admin Only)
-
-- **URL**: `/api/admin/users/:id`
-- **Method**: `DELETE`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {}
-  }
-  ```
-
-#### Get System Statistics (Admin Only)
-
-- **URL**: `/api/admin/stats`
-- **Method**: `GET`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "data": {
-      "users": {
-        "total": 100,
-        "photographers": 25,
-        "clients": 74,
-        "admins": 1
-      },
-      "photos": {
-        "total": 500,
-        "byCategory": {
-          "Portrait": 150,
-          "Wedding": 120,
-          "Landscape": 230
-        }
-      },
-      "bookings": {
-        "total": 75,
-        "pending": 15,
-        "confirmed": 40,
-        "completed": 15,
-        "canceled": 5
-      },
-      "reviews": {
-        "total": 65,
-        "averageRating": 4.6
-      }
-    }
+    "message": "Profile picture reset to default",
+    "profilePicture": "/uploads/profiles/default-profile.jpg"
   }
   ```
 
@@ -822,92 +674,69 @@ RATE_LIMIT_MAX=100
 ### User
 
 - id: INT (Primary Key)
-- username: VARCHAR(50) (Unique)
-- email: VARCHAR(100) (Unique)
-- password: VARCHAR(100) (Hashed)
-- role: ENUM ('client', 'photographer', 'admin')
-- bio: TEXT
-- profileImage: VARCHAR(255)
-- createdAt: DATETIME
-- updatedAt: DATETIME
-
-### Category
-
-- id: INT (Primary Key)
-- name: VARCHAR(50) (Unique)
-- description: TEXT
-- createdAt: DATETIME
-- updatedAt: DATETIME
+- username: STRING
+- email: STRING (Unique)
+- password: STRING (Hashed)
+- role: ENUM ('admin', 'photographer', 'client')
+- profilePicture: STRING
+- createdAt: DATE
+- updatedAt: DATE
 
 ### Photo
 
 - id: INT (Primary Key)
-- title: VARCHAR(100)
+- title: STRING
 - description: TEXT
-- imageUrl: VARCHAR(255)
-- photographerId: INT (Foreign Key → User.id)
-- categoryId: INT (Foreign Key → Category.id)
-- createdAt: DATETIME
-- updatedAt: DATETIME
+- imageUrl: STRING
+- photographerName: STRING
+- type: ENUM ('portrait', 'wedding', 'event', 'landscape', 'commercial', 'other')
+- featured: BOOLEAN
+- createdAt: DATE
+- updatedAt: DATE
 
 ### Booking
 
 - id: INT (Primary Key)
-- userId: INT (Foreign Key → User.id)
-- photographerId: INT (Foreign Key → User.id)
-- date: DATETIME
-- location: VARCHAR(255)
-- package: VARCHAR(100)
-- notes: TEXT
-- status: ENUM ('pending', 'confirmed', 'completed', 'canceled')
-- createdAt: DATETIME
-- updatedAt: DATETIME
-
-### Review
-
-- id: INT (Primary Key)
-- userId: INT (Foreign Key → User.id)
-- photographerId: INT (Foreign Key → User.id)
-- rating: INT (1-5)
-- comment: TEXT
-- createdAt: DATETIME
-- updatedAt: DATETIME
+- fullName: STRING
+- email: STRING
+- phoneNumber: STRING
+- sessionType: ENUM ('portrait', 'wedding', 'event', 'commercial', 'other')
+- date: DATEONLY
+- time: STRING
+- location: STRING
+- additionalDetails: TEXT
+- status: ENUM ('pending', 'confirmed', 'completed', 'cancelled')
+- client: INT (Foreign Key → User.id)
+- assignedPhotographer: INT (Foreign Key → User.id)
+- createdAt: DATE
+- updatedAt: DATE
 
 ## Testing
 
-The API includes a comprehensive Postman collection for testing all endpoints. To use it:
+The API includes a Postman collection for testing all endpoints. To use it:
 
 1. Import the Photo-Showcase-API.postman_collection.json file into Postman
-2. Set up a Postman environment with the following variables:
-   - `baseUrl`: The base URL of your API (e.g., `http://localhost:3000`)
+2. Set up environment variables:
+   - `baseUrl`: Your API URL (e.g., `http://localhost:3000`)
    - `admin_token`: JWT token for an admin user
    - `photographer_token`: JWT token for a photographer
-   - `user_token`: JWT token for a regular client
-
-Run the tests in the following order:
-1. Authentication tests
-2. User management tests
-3. Category tests
-4. Photo tests
-5. Booking tests
-6. Review tests
-7. Admin tests
+   - `client_token`: JWT token for a client
 
 ## Error Handling
 
-The API uses a standardized error response format:
+The API uses consistent error responses:
 
 ```json
 {
   "success": false,
-  "error": "Detailed error message"
+  "message": "Error description"
 }
 ```
 
 Common HTTP status codes:
 - `200`: Success
 - `201`: Resource created
-- `400`: Bad request
+- `400`: Bad request or validation error
 - `401`: Unauthorized (missing or invalid token)
 - `403`: Forbidden (insufficient permissions)
 - `404`: Resource not found
@@ -922,11 +751,10 @@ The API implements rate limiting to prevent abuse:
 ## Security Considerations
 
 - Passwords are hashed using bcrypt
-- JWT tokens expire after 24 hours
-- Role-based access control for all protected routes
-- Input validation for all requests
-- Protection against common web vulnerabilities (XSS, CSRF)
-- HTTPS recommended for production deployments
-- File uploads are validated for type and size
-- Sensitive information is never exposed in responses
+- JWT tokens for authentication
+- Role-based access control for protected routes
+- Helmet for setting security-related HTTP headers
+- XSS protection
+- Input validation
+- CORS configuration
 

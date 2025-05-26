@@ -1,26 +1,18 @@
 import express from 'express';
-import { auth } from '../middleware/auth.js';
-import {
-    createBooking,
-    getMyBookings,
-    getPhotographerBookings,
-    updateBooking,
-    cancelBooking
-} from '../controllers/bookingController.js';
+import { auth, adminOnly, photographerOrAdmin } from '../middleware/auth.js';
+import Booking from '../models/Booking.js';
+import User from '../models/User.js';
+import { StatusCodes } from 'http-status-codes';
+import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/index.js';
 
-/**
- * @swagger
- * tags:
- *   name: Bookings
- *   description: Booking management endpoints for photography sessions
- */
+const router = express.Router();
 
 /**
  * @swagger
  * /api/bookings:
  *   post:
- *     summary: Create a new booking
- *     description: Creates a booking for a photography session with a specific photographer
+ *     summary: Create a booking
+ *     description: Create a new photography session booking
  *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
@@ -31,260 +23,260 @@ import {
  *           schema:
  *             type: object
  *             required:
- *               - photographerId
+ *               - fullName
+ *               - email
+ *               - sessionType
  *               - date
+ *               - time
  *               - location
- *               - package
  *             properties:
- *               photographerId:
- *                 type: integer
- *                 description: ID of the photographer to book
- *                 example: 1
+ *               fullName:
+ *                 type: string
+ *                 description: Client's full name
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Client's email
+ *               phoneNumber:
+ *                 type: string
+ *                 description: Client's phone number
+ *               sessionType:
+ *                 type: string
+ *                 enum: [portrait, wedding, event, commercial, other]
+ *                 description: Type of photography session
  *               date:
  *                 type: string
- *                 format: date-time
- *                 description: Date and time of the photography session
- *                 example: "2025-06-01T10:00:00Z"
+ *                 format: date
+ *                 description: Preferred date (YYYY-MM-DD)
+ *               time:
+ *                 type: string
+ *                 description: Preferred time
  *               location:
  *                 type: string
- *                 description: Location for the photoshoot
- *                 example: "Central Park, NYC"
- *               package:
+ *                 description: Session location or venue
+ *               additionalDetails:
  *                 type: string
- *                 description: Photography package selected
- *                 example: "Standard"
- *               notes:
- *                 type: string
- *                 description: Additional notes or requests
- *                 example: "Please bring a wide-angle lens"
+ *                 description: Additional information or requests
  *     responses:
  *       201:
  *         description: Booking created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     date:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-06-01T10:00:00Z"
- *                     location:
- *                       type: string
- *                       example: "Central Park, NYC"
- *                     package:
- *                       type: string
- *                       example: "Standard"
- *                     notes:
- *                       type: string
- *                       example: "Please bring a wide-angle lens"
- *                     status:
- *                       type: string
- *                       enum: [pending, confirmed, completed, cancelled]
- *                       example: "pending"
  *       400:
  *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Invalid input data"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Server error"
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/', auth, async (req, res) => {
+  req.body.client = req.user.userId;
+  const booking = await Booking.create(req.body);
+  res.status(StatusCodes.CREATED).json({ booking });
+});
+
+/**
+ * @swagger
+ * /api/bookings/my-bookings:
  *   get:
- *     summary: Get user's bookings
- *     description: Returns all bookings made by the currently authenticated user
+ *     summary: Get client's bookings
+ *     description: Retrieve all bookings made by the authenticated client
  *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of user's bookings
+ *         description: List of client's bookings
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
+ *                 bookings:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 1
- *                       date:
- *                         type: string
- *                         format: date-time
- *                         example: "2025-06-01T10:00:00Z"
- *                       location:
- *                         type: string
- *                         example: "Central Park, NYC"
- *                       package:
- *                         type: string
- *                         example: "Standard"
- *                       notes:
- *                         type: string
- *                         example: "Please bring a wide-angle lens"
- *                       status:
- *                         type: string
- *                         enum: [pending, confirmed, completed, cancelled]
- *                         example: "pending"
- *                       photographer:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: integer
- *                             example: 1
- *                           username:
- *                             type: string
- *                             example: "john_doe"
- *       403:
- *         description: Not authorized
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Not authorized"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Server error"
+ *                     $ref: '#/components/schemas/Booking'
+ *                 count:
+ *                   type: integer
+ *       401:
+ *         description: Unauthorized
  */
+router.get('/my-bookings', auth, async (req, res) => {
+  const bookings = await Booking.find({ client: req.user.userId })
+    .sort('-createdAt')
+    .populate('assignedPhotographer', 'name email');
+    
+  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+});
+
+/**
+ * @swagger
+ * /api/bookings/my-bookings/{id}:
+ *   get:
+ *     summary: Get a specific client booking
+ *     description: Retrieve details of a specific booking made by the authenticated client
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     responses:
+ *       200:
+ *         description: Booking details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 booking:
+ *                   $ref: '#/components/schemas/Booking'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Booking not found
+ */
+router.get('/my-bookings/:id', auth, async (req, res) => {
+  const { id: bookingId } = req.params;
+  const booking = await Booking.findOne({
+    _id: bookingId,
+    client: req.user.userId,
+  }).populate('assignedPhotographer', 'name email');
+  
+  if (!booking) {
+    throw new NotFoundError(`No booking with id: ${bookingId}`);
+  }
+  
+  res.status(StatusCodes.OK).json({ booking });
+});
+
+/**
+ * @swagger
+ * /api/bookings/my-bookings/{id}:
+ *   patch:
+ *     summary: Update client booking
+ *     description: Update details of a booking made by the authenticated client
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               time:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               additionalDetails:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [cancelled]
+ *                 description: Clients can only cancel bookings
+ *     responses:
+ *       200:
+ *         description: Booking updated successfully
+ *       400:
+ *         description: Invalid input or operation not allowed
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Booking not found
+ */
+router.patch('/my-bookings/:id', auth, async (req, res) => {
+  const { id: bookingId } = req.params;
+  const booking = await Booking.findOne({
+    _id: bookingId,
+    client: req.user.userId,
+  });
+  
+  if (!booking) {
+    throw new NotFoundError(`No booking with id: ${bookingId}`);
+  }
+  
+  // Only allow cancellations and updates to non-status fields for clients
+  if (req.body.status && req.body.status !== 'cancelled') {
+    throw new BadRequestError('Clients can only cancel bookings');
+  }
+  
+  const updatedBooking = await Booking.findOneAndUpdate(
+    { _id: bookingId, client: req.user.userId },
+    req.body,
+    { new: true, runValidators: true }
+  ).populate('assignedPhotographer', 'name email');
+  
+  res.status(StatusCodes.OK).json({ booking: updatedBooking });
+});
 
 /**
  * @swagger
  * /api/bookings/photographer:
  *   get:
- *     summary: Get logged-in photographer's bookings
- *     description: Returns all bookings for the currently authenticated photographer
- *     tags: [Bookings]
+ *     summary: Get photographer's assigned bookings
+ *     description: Retrieve all bookings assigned to the authenticated photographer
+ *     tags: [Photographer Bookings]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of photographer's bookings
+ *         description: List of assigned bookings
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
+ *                 bookings:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 1
- *                       date:
- *                         type: string
- *                         format: date-time
- *                         example: "2025-06-01T10:00:00Z"
- *                       location:
- *                         type: string
- *                         example: "Central Park, NYC"
- *                       package:
- *                         type: string
- *                         example: "Standard"
- *                       notes:
- *                         type: string
- *                         example: "Please bring a wide-angle lens"
- *                       status:
- *                         type: string
- *                         enum: [pending, confirmed, completed, cancelled]
- *                         example: "pending"
- *                       client:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: integer
- *                             example: 2
- *                           username:
- *                             type: string
- *                             example: "jane_doe"
- *       403:
- *         description: Not authorized - requires photographer role
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Not authorized - requires photographer role"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Error fetching photographer bookings"
+ *                     $ref: '#/components/schemas/Booking'
+ *                 count:
+ *                   type: integer
+ *       401:
+ *         description: Unauthorized - photographer access required
  */
+router.get('/photographer', auth, async (req, res) => {
+  let photographerId;
+  
+  // If specific photographer ID is provided in params (admin request)
+  if (req.params.id) {
+    if (req.user.role !== 'admin') {
+      throw new UnauthenticatedError('Not authorized to access this route');
+    }
+    photographerId = req.params.id;
+  } else {
+    // Use the authenticated photographer's ID
+    if (req.user.role !== 'photographer') {
+      throw new UnauthenticatedError('Not authorized to access this route');
+    }
+    photographerId = req.user.userId;
+  }
+  
+  const bookings = await Booking.find({ assignedPhotographer: photographerId })
+    .sort('date')
+    .populate('client', 'name email phoneNumber');
+  
+  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+});
 
 /**
  * @swagger
  * /api/bookings/photographer/{id}:
  *   get:
  *     summary: Get bookings for a specific photographer
- *     description: Admin-only endpoint to view bookings for any photographer
- *     tags: [Bookings]
+ *     description: Admin endpoint to view bookings assigned to a specific photographer
+ *     tags: [Admin Bookings]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -294,103 +286,131 @@ import {
  *         schema:
  *           type: integer
  *         description: Photographer's user ID
- *         example: 1
  *     responses:
  *       200:
- *         description: List of photographer's bookings
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 1
- *                       date:
- *                         type: string
- *                         format: date-time
- *                         example: "2025-06-01T10:00:00Z"
- *                       location:
- *                         type: string
- *                         example: "Central Park, NYC"
- *                       package:
- *                         type: string
- *                         example: "Standard"
- *                       notes:
- *                         type: string
- *                         example: "Please bring a wide-angle lens"
- *                       status:
- *                         type: string
- *                         enum: [pending, confirmed, completed, cancelled]
- *                         example: "pending"
- *                       client:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: integer
- *                             example: 2
- *                           username:
- *                             type: string
- *                             example: "jane_doe"
+ *         description: List of bookings for the specified photographer
+ *       401:
+ *         description: Unauthorized
  *       403:
- *         description: Not authorized - requires admin role
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Not authorized - requires admin role"
- *       404:
- *         description: Photographer not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Photographer not found"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Server error"
+ *         description: Forbidden - admin access required
  */
+router.get('/photographer/:id', auth, adminOnly, async (req, res) => {
+  const photographerId = req.params.id;
+  
+  const bookings = await Booking.find({ assignedPhotographer: photographerId })
+    .sort('date')
+    .populate('client', 'name email phoneNumber');
+  
+  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+});
+
+/**
+ * @swagger
+ * /api/bookings/all:
+ *   get:
+ *     summary: Get all bookings
+ *     description: Admin endpoint to view all bookings in the system
+ *     tags: [Admin Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all bookings
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - admin access required
+ */
+router.get('/all', auth, adminOnly, async (req, res) => {
+  const bookings = await Booking.find({})
+    .sort('-createdAt')
+    .populate('client', 'name email phoneNumber')
+    .populate('assignedPhotographer', 'name email');
+    
+  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+});
+
+/**
+ * @swagger
+ * /api/bookings/{id}/assign:
+ *   patch:
+ *     summary: Assign photographer to booking
+ *     description: Admin endpoint to assign a photographer to a booking
+ *     tags: [Admin Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - photographerId
+ *             properties:
+ *               photographerId:
+ *                 type: integer
+ *                 description: ID of the photographer to assign
+ *     responses:
+ *       200:
+ *         description: Photographer assigned successfully
+ *       400:
+ *         description: Invalid input data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - admin access required
+ *       404:
+ *         description: Booking or photographer not found
+ */
+router.patch('/:id/assign', auth, adminOnly, async (req, res) => {
+  const { id: bookingId } = req.params;
+  const { photographerId } = req.body;
+  
+  if (!photographerId) {
+    throw new BadRequestError('Please provide photographer ID');
+  }
+  
+  // Verify the photographer exists and has the photographer role
+  const photographer = await User.findOne({
+    _id: photographerId,
+    role: 'photographer'
+  });
+  
+  if (!photographer) {
+    throw new NotFoundError(`No photographer with id: ${photographerId}`);
+  }
+  
+  const booking = await Booking.findById(bookingId);
+  
+  if (!booking) {
+    throw new NotFoundError(`No booking with id: ${bookingId}`);
+  }
+  
+  booking.assignedPhotographer = photographerId;
+  booking.status = 'confirmed';
+  await booking.save();
+  
+  const updatedBooking = await Booking.findById(bookingId)
+    .populate('client', 'name email phoneNumber')
+    .populate('assignedPhotographer', 'name email');
+  
+  res.status(StatusCodes.OK).json({ booking: updatedBooking });
+});
 
 /**
  * @swagger
  * /api/bookings/{id}:
  *   put:
- *     summary: Update a booking
- *     description: |
- *       Update booking details with role-based permissions:
- *       - Clients can update location, date, package, and notes (but not status)
- *       - Photographers can update status to confirmed/completed and add notes
- *       - Admins can update all fields
+ *     summary: Update booking
+ *     description: Update a booking with role-based restrictions
  *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
@@ -401,9 +421,7 @@ import {
  *         schema:
  *           type: integer
  *         description: Booking ID
- *         example: 1
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -411,119 +429,91 @@ import {
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [pending, confirmed, completed, cancelled]
- *                 description: Photographer or admin can update status
- *                 example: "confirmed"
- *               notes:
+ *                 description: |
+ *                   - Clients can only set to 'cancelled'
+ *                   - Photographers can set to 'confirmed' or 'completed'
+ *                   - Admins can set to any status
+ *               additionalDetails:
  *                 type: string
- *                 description: Additional notes about the booking
- *                 example: "Updated notes"
+ *                 description: Additional notes or information
  *               date:
  *                 type: string
- *                 format: date-time
- *                 description: Client can reschedule by updating date
- *                 example: "2025-06-02T10:00:00Z"
+ *                 format: date
+ *                 description: Booking date (client or admin only)
+ *               time:
+ *                 type: string
+ *                 description: Booking time (client or admin only)
  *               location:
  *                 type: string
- *                 description: Client can change location
- *                 example: "Brooklyn Bridge, NYC"
- *               package:
- *                 type: string
- *                 description: Client can change package
- *                 example: "Premium"
+ *                 description: Session location (client or admin only)
  *     responses:
  *       200:
  *         description: Booking updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     date:
- *                       type: string
- *                       format: date-time
- *                       example: "2025-06-02T10:00:00Z"
- *                     location:
- *                       type: string
- *                       example: "Brooklyn Bridge, NYC"
- *                     package:
- *                       type: string
- *                       example: "Premium"
- *                     notes:
- *                       type: string
- *                       example: "Updated notes"
- *                     status:
- *                       type: string
- *                       enum: [pending, confirmed, completed, cancelled]
- *                       example: "confirmed"
  *       400:
- *         description: Invalid input data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Invalid input data"
- *       403:
- *         description: Not authorized to update this booking
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Not authorized to update this booking"
+ *         description: Invalid input or operation not allowed
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Booking not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Booking not found"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Server error"
+ */
+router.put('/:id', auth, async (req, res) => {
+  const { id: bookingId } = req.params;
+  let booking;
+  
+  // Different queries based on user role
+  if (req.user.role === 'client') {
+    booking = await Booking.findOne({
+      _id: bookingId,
+      client: req.user.userId
+    });
+    
+    // Clients can't update status (except cancellation)
+    if (req.body.status && req.body.status !== 'cancelled') {
+      throw new BadRequestError('Clients can only cancel bookings');
+    }
+  } else if (req.user.role === 'photographer') {
+    booking = await Booking.findOne({
+      _id: bookingId,
+      assignedPhotographer: req.user.userId
+    });
+    
+    // Photographers can only update status to confirmed or completed
+    if (req.body.status && !['confirmed', 'completed'].includes(req.body.status)) {
+      throw new BadRequestError('Photographers can only confirm or complete bookings');
+    }
+    
+    // Photographers can only update status and additionalDetails
+    const allowedFields = ['status', 'additionalDetails'];
+    Object.keys(req.body).forEach(key => {
+      if (!allowedFields.includes(key)) {
+        delete req.body[key];
+      }
+    });
+  } else if (req.user.role === 'admin') {
+    // Admins can update any booking
+    booking = await Booking.findById(bookingId);
+  }
+  
+  if (!booking) {
+    throw new NotFoundError(`No booking with id: ${bookingId}`);
+  }
+  
+  const updatedBooking = await Booking.findByIdAndUpdate(
+    bookingId,
+    req.body,
+    { new: true, runValidators: true }
+  ).populate('client', 'name email phoneNumber')
+   .populate('assignedPhotographer', 'name email');
+  
+  res.status(StatusCodes.OK).json({ booking: updatedBooking });
+});
+
+/**
+ * @swagger
+ * /api/bookings/{id}:
  *   delete:
- *     summary: Cancel a booking
- *     description: |
- *       Cancel a booking with role-based permissions:
- *       - Clients can cancel their own bookings
- *       - Photographers can cancel bookings made to them
- *       - Admins can cancel any booking
+ *     summary: Cancel booking
+ *     description: Cancel a booking (sets status to 'cancelled')
  *     tags: [Bookings]
  *     security:
  *       - bearerAuth: []
@@ -534,90 +524,92 @@ import {
  *         schema:
  *           type: integer
  *         description: Booking ID
- *         example: 1
  *     responses:
  *       200:
  *         description: Booking cancelled successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Booking cancelled successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     status:
- *                       type: string
- *                       enum: [cancelled]
- *                       example: "cancelled"
- *       403:
- *         description: Not authorized to cancel this booking
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Not authorized to cancel this booking"
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Booking not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Booking not found"
- *       500:
- *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Server error"
  */
+router.delete('/:id', auth, async (req, res) => {
+  const { id: bookingId } = req.params;
+  let booking;
+  
+  // Different queries based on user role
+  if (req.user.role === 'client') {
+    booking = await Booking.findOne({
+      _id: bookingId,
+      client: req.user.userId
+    });
+  } else if (req.user.role === 'photographer') {
+    booking = await Booking.findOne({
+      _id: bookingId,
+      assignedPhotographer: req.user.userId
+    });
+  } else if (req.user.role === 'admin') {
+    // Admins can cancel any booking
+    booking = await Booking.findById(bookingId);
+  }
+  
+  if (!booking) {
+    throw new NotFoundError(`No booking with id: ${bookingId}`);
+  }
+  
+  booking.status = 'cancelled';
+  await booking.save();
+  
+  res.status(StatusCodes.OK).json({ 
+    message: 'Booking cancelled successfully',
+    booking 
+  });
+});
 
-const router = express.Router();
-
-// Create a new booking
-router.post('/', auth, createBooking);
-
-// Get authenticated user's bookings
-router.get('/', auth, getMyBookings);
-
-// Get authenticated photographer's bookings
-router.get('/photographer', auth, getPhotographerBookings);
-
-// Get bookings for a specific photographer (admin only)
-router.get('/photographer/:id', auth, getPhotographerBookings);
-
-// Update a booking
-router.put('/:id', auth, updateBooking);
-
-// Cancel a booking
-router.delete('/:id', auth, cancelBooking);
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Booking:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         fullName:
+ *           type: string
+ *         email:
+ *           type: string
+ *         phoneNumber:
+ *           type: string
+ *         sessionType:
+ *           type: string
+ *           enum: [portrait, wedding, event, commercial, other]
+ *         date:
+ *           type: string
+ *           format: date
+ *         time:
+ *           type: string
+ *         location:
+ *           type: string
+ *         additionalDetails:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [pending, confirmed, completed, cancelled]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *         assignedPhotographer:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
+ *             email:
+ *               type: string
+ */
 
 export default router;

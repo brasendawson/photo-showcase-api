@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });  
 
 export const sequelize = new Sequelize(
-  process.env.DB_NAME,
+  process.env.DB_NAME, // Keep the existing database name 'photoshowapi'
   process.env.DB_USER,
   process.env.DB_PASSWORD,
   {
@@ -18,7 +18,15 @@ export const sequelize = new Sequelize(
     dialect: 'mysql',
     dialectModule: mysql2,
     logging: false,
-    sync: { alter: false } 
+    // Update the sync configuration to handle index limitations better
+    sync: { 
+      alter: false,
+      // Add these options to control index creation when syncing
+      // This will be used when force:true is specified in index.js
+      hooks: true, 
+      // Limit key creation to prevent "Too many keys" error
+      indexes: false
+    } 
   }
 );
 

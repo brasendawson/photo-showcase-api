@@ -1,12 +1,8 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { addToBlacklist } from '../utils/tokenBlacklist.js';
-import { auth } from '../middleware/auth.js';
-import { validateRegistration } from '../middleware/validateInput.js';
-import logger from '../utils/logger.js';
-import { Op } from 'sequelize';
+import { StatusCodes } from 'http-status-codes';
+import { BadRequestError, UnauthenticatedError } from '../errors/index.js';
+import { createJWT } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -22,6 +18,7 @@ const router = express.Router();
  * /api/auth/register:
  *   post:
  *     summary: Register a new user
+ *     description: Register as a client or photographer (admin registration restricted)
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -33,35 +30,54 @@ const router = express.Router();
  *               - username
  *               - email
  *               - password
- *               - role
  *             properties:
  *               username:
  *                 type: string
- *                 example: johndoe
+ *                 description: User's username
  *               email:
  *                 type: string
  *                 format: email
- *                 example: john@example.com
+ *                 description: User's email address
  *               password:
  *                 type: string
  *                 format: password
- *                 example: securePassword123!
+ *                 description: User's password (min 6 characters)
  *               role:
  *                 type: string
- *                 enum: [user, photographer, admin]
- *                 example: user
+ *                 enum: [client, photographer]
+ *                 description: User role (defaults to client if not specified)
  *     responses:
  *       201:
  *         description: User registered successfully
- *       400:
- *         description: Invalid input
  */
+router.post('/register', async (req, res) => {
+  const user = await User.create({ ...req.body });
+  
+  const token = createJWT({ 
+    payload: { 
+      userId: user.id, 
+      username: user.username, 
+      role: user.role 
+    }
+  });
+  
+  res.status(StatusCodes.CREATED).json({ 
+    user: { 
+      username: user.username, 
+      email: user.email,
+      role: user.role,
+      id: user.id 
+    }, 
+    token 
+  });
+});
 
 /**
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Log in a user
+ *     description: Authenticate a user and return a JWT token
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -77,166 +93,60 @@ const router = express.Router();
  *                 type: string
  *               password:
  *                 type: string
+ *                 format: password
  *     responses:
  *       200:
  *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 token:
- *                   type: string
- *                 username:
- *                   type: string
  */
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    throw new BadRequestError('Please provide username and password');
+  }
+  
+  const user = await User.findOne({ where: { username } });
+  if (!user) {
+    throw new UnauthenticatedError('Invalid Credentials');
+  }
+  
+  const isPasswordCorrect = await user.comparePassword(password);
+  if (!isPasswordCorrect) {
+    throw new UnauthenticatedError('Invalid Credentials');
+  }
+  
+  const token = createJWT({ 
+    payload: { 
+      userId: user.id, 
+      username: user.username, 
+      role: user.role 
+    }
+  });
+  
+  res.status(StatusCodes.OK).json({ 
+    user: { 
+      username: user.username, 
+      email: user.email,
+      role: user.role,
+      id: user.id 
+    }, 
+    token 
+  });
+});
 
 /**
  * @swagger
  * /api/auth/logout:
  *   post:
- *     summary: Logout user
+ *     summary: Log out a user
+ *     description: Client-side logout (JWT tokens are stateless, this endpoint is for consistency)
  *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Logout successful
- *       401:
- *         description: Unauthorized
  */
-
-// Register
-router.post('/register', validateRegistration, async (req, res) => {
-  try {
-    const { username, email, password, role } = req.body;
-
-    // Validate role
-    const validRoles = ['user', 'photographer', 'admin'];
-    if (!validRoles.includes(role)) {
-      logger.error('Registration failed - Invalid role', {
-        username,
-        role,
-        event: 'registration_invalid_role'
-      });
-      return res.status(400).json({ 
-        message: 'Invalid role specified'
-      });
-    }
-
-    // Check if user exists
-    const existingUser = await User.findOne({ where: { 
-        [Op.or]: [{ username }, { email }] 
-    }});
-
-    if (existingUser) {
-        logger.error('Registration failed - User exists', {
-            username,
-            email,
-            event: 'registration_duplicate',
-            duplicateField: existingUser.username === username ? 'username' : 'email'
-        });
-        return res.status(400).json({ 
-            message: 'Username or email already exists'
-        });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const user = await User.create({
-      username,
-      email,
-      password: hashedPassword,
-      role // Explicitly set role from request
-    });
-
-    logger.info('User registered successfully', {
-      username,
-      role,
-      event: 'registration_success'
-    });
-
-    res.status(201).json({ 
-      message: 'User created successfully',
-      role: user.role // Include role in response
-    });
-  } catch (err) {
-    logger.error('Registration failed', {
-        username: req.body.username,
-        error: err.message,
-        event: 'registration_failed'
-    });
-    res.status(500).json({ message: 'Server Error' });
-  }
-});
-
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ where: { username } });
-
-    if (!user) {
-      logger.error('Authentication failed', {
-        username,
-        reason: 'Invalid credentials',
-        event: 'auth_failure'
-      });
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      logger.error('Authentication failed', {
-        username,
-        reason: 'Invalid credentials',
-        event: 'auth_failure'
-      });
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { userId: user.id, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    logger.info(`User logged in: ${username}`);
-    res.json({ token });
-  } catch (err) {
-    logger.error('Login error:', { error: err.message });
-    res.status(500).json('Server Error');
-  }
-});
-
-// Logout
-router.post('/logout', auth, async (req, res) => {
-    try {
-        addToBlacklist(req.token);
-        res.json({ message: 'Logged out successfully' });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json('Server Error');
-    }
-});
-
-// Test logging route
-router.get('/test-log', (req, res) => {
-    logger.info('Test log entry');
-    logger.error('Test error entry');
-    res.json({ message: 'Logging test complete' });
-});
-
-// Add this route to test error logging
-router.get('/test-error', (req, res) => {
-    try {
-        throw new Error('Test error from API');
-    } catch (error) {
-        logger.error('API Error:', error);
-        res.status(500).json({ message: 'Error logged' });
-    }
+router.post('/logout', async (req, res) => {
+  res.status(StatusCodes.OK).json({ msg: 'User logged out!' });
 });
 
 export default router;

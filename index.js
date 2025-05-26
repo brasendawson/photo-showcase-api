@@ -1,94 +1,142 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { connectDB, sequelize } from './config/db.js';
-import healthRoutes from './routes/health.js';
+// If you installed morgan, uncomment this line
+// import morgan from 'morgan';
+import cors from 'cors';
+import helmet from 'helmet';
+import xss from 'xss-clean';
+import rateLimit from 'express-rate-limit';
+import { sequelize } from './config/db.js';
+import 'express-async-errors';
+
+// Import route files
 import authRoutes from './routes/auth.js';
-import photoRoutes from './routes/Photos.js';
+import photoRoutes from './routes/photos.js';
 import bookingRoutes from './routes/bookings.js';
-import categoryRoutes from './routes/categories.js';
-import reviewRoutes from './routes/reviews.js';
-import './models/User.js';
+import serviceRoutes from './routes/services.js';
+import profileRoutes from './routes/profile.js';  // Add this line
+
+// Import middleware
+import errorHandlerMiddleware from './middleware/error-handler.js';
+
+// Import Swagger packages
+import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { specs } from './config/swagger.js';
-import { limiter } from './middleware/rateLimit.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import logger from './utils/logger.js';
-import cors from "cors";
-import favicon from 'serve-favicon'; 
-import path from 'path'; 
-import { fileURLToPath } from 'url';
-import adminRoutes from './routes/admin.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: './config/.env' });
+dotenv.config();
 
 const app = express();
-app.set('trust proxy', 1);
-app.use(favicon(path.join(__dirname, 'favicon.ico')));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+
+// Security middleware
+app.use(helmet());
 app.use(cors());
+app.use(xss());
 
-// Connect to database
-connectDB();
-
-// Sync database
-sequelize.sync()
-  .then(() => {
-    console.log('Database synced');
-  })
-  .catch(err => {
-    console.error('Error syncing database:', err);
-  });
-
-// Rate Limiting
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
 app.use(limiter);
 
-// API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+// Body parser and logging
+app.use(express.json());
+// If you installed morgan, uncomment this line
+// if (process.env.NODE_ENV !== 'production') {
+//   app.use(morgan('dev'));
+// }
 
-// Routes
+// Welcome route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Welcome to Photography Studio API',
+    description: 'API for managing photography studio bookings and gallery',
+    version: '1.0.0'
+  });
+});
+
+// Define PORT before using it in Swagger configuration
+const PORT = process.env.PORT || 5000;
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Photography Studio API',
+      version: '1.0.0',
+      description: 'API for managing photography studio bookings and gallery',
+      contact: {
+        name: 'API Support',
+        email: 'support@photostudio.com'
+      }
+    },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://your-production-url.com' 
+          : `http://localhost:${PORT}`,
+        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
+  },
+  apis: ['./routes/*.js'] // Path to the API routes with JSDoc comments
+};
+
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+
+// Use routes
 app.use('/api/auth', authRoutes);
-app.use('/api/health', healthRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/profile', profileRoutes);  // Add this line
 
-// Error Handler
-app.use(errorHandler);
+// Serve static files from the uploads directory
+app.use('/uploads', express.static('uploads'));
 
-const PORT = process.env.PORT || 3000;
+// Swagger documentation route
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-app.listen(PORT, () => {
-    logger.info('Server started', {
-        event: 'server_start',
-        port: PORT,
-        timestamp: new Date().toISOString()
-    });
+// Error handling middleware
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: `Route not found: ${req.originalUrl}` 
+  });
 });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    logger.error('Uncaught Exception', {
-        error: err.message,
-        stack: err.stack,
-        event: 'uncaught_exception'
+// Use the error-handler.js middleware
+app.use(errorHandlerMiddleware);
+
+// Start server
+const start = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection established successfully');
+    
+    // In development, you might want to sync the models with the database
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: true });
+      console.log('Database models synchronized');
+    }
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
     process.exit(1);
-});
+  }
+};
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Rejection', {
-        error: err.message,
-        stack: err.stack,
-        event: 'unhandled_rejection'
-    });
-    process.exit(1);
-});
-
-export default app;
+start();

@@ -1,49 +1,50 @@
 import jwt from 'jsonwebtoken';
-import { isTokenBlacklisted } from '../utils/tokenBlacklist.js';
-import User from '../models/User.js';
+import { UnauthenticatedError } from '../errors/index.js';
 
-export const auth = async (req, res, next) => {
-    try {
-        const token = req.header('Authorization').replace('Bearer ', '');
-        
-        if (isTokenBlacklisted(token)) {
-            return res.status(401).json({ message: 'Token has been invalidated, Log in Again' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findByPk(decoded.userId);
-        
-        if (!user) {
-            throw new Error('User not found');
-        }
-
-        req.user = user;
-        req.token = token;
-        next();
-    } catch (err) {
-        res.status(401).json({ message: 'Please authenticate' });
-    }
+// Add JWT utility functions
+const createJWT = ({ payload }) => {
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_LIFETIME || '1d',
+  });
+  return token;
 };
 
-// Add role-based authorization
-export const authorize = (...roles) => {
-    return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
-            return res.status(403).json({
-                message: 'Not authorized to access this route'
-            });
-        }
-        next();
+const isTokenValid = (token) => jwt.verify(token, process.env.JWT_SECRET);
+
+const auth = async (req, res, next) => {
+  // check header
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer')) {
+    throw new UnauthenticatedError('Authentication invalid');
+  }
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    // attach the user to the routes
+    req.user = { 
+      userId: payload.userId, 
+      name: payload.name,
+      role: payload.role 
     };
+    next();
+  } catch (error) {
+    throw new UnauthenticatedError('Authentication invalid');
+  }
 };
 
-// Add admin check middleware
-export const isAdmin = (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({
-            success: false,
-            message: 'Access restricted to admin users'
-        });
-    }
-    next();
+const adminOnly = async (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    throw new UnauthenticatedError('Not authorized to access this route');
+  }
+  next();
 };
+
+const photographerOrAdmin = async (req, res, next) => {
+  if (req.user.role !== 'photographer' && req.user.role !== 'admin') {
+    throw new UnauthenticatedError('Not authorized to access this route');
+  }
+  next();
+};
+
+export { auth, adminOnly, photographerOrAdmin, createJWT, isTokenValid };
