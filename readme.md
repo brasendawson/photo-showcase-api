@@ -15,7 +15,7 @@ A RESTful API for a photography studio service that enables clients to browse ph
   - Authentication Endpoints
   - Photo Gallery Endpoints
   - Booking Endpoints
-  - Admin Endpoints
+  - Services Endpoints
   - Profile Picture Endpoints
 - Database Schema
 - Testing
@@ -34,6 +34,8 @@ Photography Studio API is a complete backend solution for photography services. 
 - Photo gallery management by admins
 - Booking system for photography sessions
 - Photographer assignment to bookings
+- Service catalog management
+- Profile picture management with Cloudinary
 - Booking management for all user roles
 
 ## Technology Stack
@@ -45,6 +47,7 @@ Photography Studio API is a complete backend solution for photography services. 
 - **Documentation**: Swagger UI
 - **Testing**: Postman Collection
 - **Security**: Helmet, XSS-Clean, Express Rate Limit
+- **Storage**: Cloudinary for profile pictures
 
 ## Getting Started
 
@@ -53,13 +56,14 @@ Photography Studio API is a complete backend solution for photography services. 
 - Node.js (v16 or higher)
 - MySQL database
 - npm or yarn
+- Cloudinary account (for profile picture storage)
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/brasendawson/photography-studio-api.git
-   cd photography-studio-api
+   git clone https://github.com/yourusername/photo-showcase-api.git
+   cd photo-showcase-api
    ```
 
 2. Install dependencies:
@@ -69,13 +73,7 @@ Photography Studio API is a complete backend solution for photography services. 
 
 3. Create a `.env` file in the root directory with your environment variables (see Environment Setup).
 
-4. Make sure to create an "uploads" directory for profile pictures:
-   ```bash
-   mkdir uploads
-   mkdir uploads/profiles
-   ```
-
-5. Start the server:
+4. Start the server:
    ```bash
    npm start
    ```
@@ -97,12 +95,21 @@ NODE_ENV=development
 # Database Configuration
 DB_HOST=localhost
 DB_USER=yourusername
-DB_PASS=yourpassword
-DB_NAME=photography_studio_db
+DB_PASSWORD=yourpassword
+DB_NAME=photoshowapi
+DB_PORT=3306
 
 # JWT Configuration
 JWT_SECRET=your_secret_key
 JWT_LIFETIME=1d
+
+# Database Reset Flag (set to true only when you need to reset all tables)
+DB_RESET=false
+
+# Cloudinary Configuration (for profile pictures)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ## API Documentation
@@ -116,18 +123,19 @@ JWT_LIFETIME=1d
 - **Body**:
   ```json
   {
-    "name": "John Doe",
+    "username": "johndoe",
     "email": "john@example.com",
     "password": "securepassword",
-    "role": "client",
-    "phone": "555-123-4567"
+    "role": "client"
   }
   ```
+  Note: Role is optional and defaults to "client" if not provided. Available roles are "admin", "photographer", and "client".
+
 - **Response**: `201 Created`
   ```json
   {
     "user": {
-      "name": "John Doe",
+      "username": "johndoe",
       "email": "john@example.com",
       "role": "client",
       "id": 1
@@ -143,7 +151,7 @@ JWT_LIFETIME=1d
 - **Body**:
   ```json
   {
-    "email": "john@example.com",
+    "username": "johndoe",
     "password": "securepassword"
   }
   ```
@@ -151,23 +159,12 @@ JWT_LIFETIME=1d
   ```json
   {
     "user": {
-      "name": "John Doe",
+      "username": "johndoe",
       "email": "john@example.com",
       "role": "client",
       "id": 1
     },
     "token": "jwt_token_here"
-  }
-  ```
-
-#### Logout User
-
-- **URL**: `/api/auth/logout`
-- **Method**: `POST`
-- **Response**: `200 OK`
-  ```json
-  {
-    "msg": "User logged out!"
   }
   ```
 
@@ -320,6 +317,130 @@ JWT_LIFETIME=1d
   ```json
   {
     "msg": "Success! Photo deleted."
+  }
+  ```
+
+### Services Endpoints
+
+#### Get All Services
+
+- **URL**: `/api/services`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "services": [
+      {
+        "id": 1,
+        "name": "Wedding Photography",
+        "description": "Professional wedding photography services",
+        "price": "1200.00",
+        "duration": "6-8 hours",
+        "isActive": true,
+        "createdAt": "2023-05-10T14:30:00.000Z",
+        "updatedAt": "2023-05-10T14:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "Portrait Session",
+        "description": "Professional portrait photography",
+        "price": "250.00",
+        "duration": "1-2 hours",
+        "isActive": true,
+        "createdAt": "2023-05-15T10:20:00.000Z",
+        "updatedAt": "2023-05-15T10:20:00.000Z"
+      }
+    ]
+  }
+  ```
+
+#### Get Service by ID
+
+- **URL**: `/api/services/:id`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "service": {
+      "id": 1,
+      "name": "Wedding Photography",
+      "description": "Professional wedding photography services",
+      "price": "1200.00",
+      "duration": "6-8 hours",
+      "isActive": true,
+      "createdAt": "2023-05-10T14:30:00.000Z",
+      "updatedAt": "2023-05-10T14:30:00.000Z"
+    }
+  }
+  ```
+
+#### Create Service (Admin Only)
+
+- **URL**: `/api/services`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "name": "Commercial Photography",
+    "description": "Professional product and commercial photography",
+    "price": 800,
+    "duration": "4-5 hours"
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "service": {
+      "id": 3,
+      "name": "Commercial Photography",
+      "description": "Professional product and commercial photography",
+      "price": "800.00",
+      "duration": "4-5 hours",
+      "isActive": true,
+      "createdAt": "2023-06-01T11:20:00.000Z",
+      "updatedAt": "2023-06-01T11:20:00.000Z"
+    }
+  }
+  ```
+
+#### Update Service (Admin Only)
+
+- **URL**: `/api/services/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "description": "Premium wedding photography services with multiple photographers",
+    "price": 1500
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "service": {
+      "id": 1,
+      "name": "Wedding Photography",
+      "description": "Premium wedding photography services with multiple photographers",
+      "price": "1500.00",
+      "duration": "6-8 hours",
+      "isActive": true,
+      "createdAt": "2023-05-10T14:30:00.000Z",
+      "updatedAt": "2023-06-02T09:15:00.000Z"
+    }
+  }
+  ```
+
+#### Delete Service (Admin Only)
+
+- **URL**: `/api/services/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Response**: `200 OK`
+  ```json
+  {
+    "message": "Service removed successfully"
   }
   ```
 
@@ -638,7 +759,7 @@ JWT_LIFETIME=1d
   {
     "success": true,
     "message": "Profile picture updated successfully",
-    "profilePicture": "/uploads/profiles/profile-1-123456789.jpg"
+    "profilePicture": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/profile-1-123456789.jpg"
   }
   ```
 
@@ -651,7 +772,7 @@ JWT_LIFETIME=1d
   ```json
   {
     "success": true,
-    "profilePicture": "/uploads/profiles/profile-1-123456789.jpg"
+    "profilePicture": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/profile-1-123456789.jpg"
   }
   ```
 
@@ -665,7 +786,7 @@ JWT_LIFETIME=1d
   {
     "success": true,
     "message": "Profile picture reset to default",
-    "profilePicture": "/uploads/profiles/default-profile.jpg"
+    "profilePicture": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/default-profile.jpg"
   }
   ```
 
@@ -711,6 +832,17 @@ JWT_LIFETIME=1d
 - createdAt: DATE
 - updatedAt: DATE
 
+### Service
+
+- id: INT (Primary Key)
+- name: STRING
+- description: TEXT
+- price: DECIMAL(10,2)
+- duration: STRING
+- isActive: BOOLEAN
+- createdAt: DATE
+- updatedAt: DATE
+
 ## Testing
 
 The API includes a Postman collection for testing all endpoints. To use it:
@@ -718,9 +850,12 @@ The API includes a Postman collection for testing all endpoints. To use it:
 1. Import the Photo-Showcase-API.postman_collection.json file into Postman
 2. Set up environment variables:
    - `baseUrl`: Your API URL (e.g., `http://localhost:3000`)
-   - `admin_token`: JWT token for an admin user
-   - `photographer_token`: JWT token for a photographer
-   - `client_token`: JWT token for a client
+3. Run the collection from start to finish to test all endpoints automatically
+   - The collection will register admin, photographer, and client users
+   - It will then test all endpoints with appropriate authentication
+   - It will test profile picture upload/management for all user roles
+   - It will test services management (admin only)
+   - It will test bookings creation and management
 
 ## Error Handling
 
@@ -757,4 +892,16 @@ The API implements rate limiting to prevent abuse:
 - XSS protection
 - Input validation
 - CORS configuration
+
+## Development Notes
+
+### Database Reset
+
+When you need to recreate all database tables (for example, after major schema changes):
+
+1. Set `DB_RESET=true` in your `.env` file
+2. Start the server once to recreate all tables
+3. Set `DB_RESET=false` in your `.env` file to prevent data loss on future restarts
+
+This operation will delete all existing data in the database, so use with caution.
 
