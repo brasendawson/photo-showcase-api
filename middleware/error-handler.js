@@ -1,35 +1,60 @@
 import { StatusCodes } from 'http-status-codes';
+import logger from '../utils/logger.js';
 
 const errorHandlerMiddleware = (err, req, res, next) => {
-  console.log(err);
-  
+  // Create custom error response
   let customError = {
-    // Set default
-    statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-    message: err.message || 'Something went wrong, please try again later'
+    success: false,
+    message: err.message || 'Something went wrong',
+    statusCode: err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR
   };
 
-  // Handle Sequelize validation errors
-  if (err.name === 'SequelizeValidationError') {
+  // Log authentication errors in the desired format
+  if (err.message && (err.message.includes('Not authorized') || err.message.includes('Login required') || err.message.includes('Session expired'))) {
+    // Already logged in auth middleware, no need to log again
+  } else if (err.name === 'ValidationError') {
+    customError.message = Object.values(err.errors)
+      .map(item => item.message)
+      .join(', ');
     customError.statusCode = StatusCodes.BAD_REQUEST;
-    customError.message = err.errors.map(item => item.message).join(', ');
+    
+    logger.error(`Validation error: ${customError.message}`, {
+      timestamp: new Date().toISOString()
+    });
+  } else if (err.name === 'CastError') {
+    customError.message = `Resource not found`;
+    customError.statusCode = StatusCodes.NOT_FOUND;
+    
+    logger.error(`Cast error: ${err.value}`, {
+      timestamp: new Date().toISOString()
+    });
+  } else if (err.code && err.code === 11000) {
+    customError.message = `Duplicate value entered`;
+    customError.statusCode = StatusCodes.BAD_REQUEST;
+    
+    logger.error(`Duplicate error: ${JSON.stringify(err.keyValue)}`, {
+      timestamp: new Date().toISOString()
+    });
+  } else if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    // JWT specific errors
+    customError.message = err.name === 'TokenExpiredError' ? 'Session expired' : 'Invalid token';
+    customError.statusCode = StatusCodes.UNAUTHORIZED;
+    
+    logger.error(`Token error: ${customError.message}`, {
+      timestamp: new Date().toISOString()
+    });
+  } else if (err.statusCode !== 401 && err.statusCode !== 403) {
+    // Log other server errors but not auth errors (already logged)
+    logger.error(`Server error: ${err.message || 'Unknown error'}`, {
+      timestamp: new Date().toISOString(),
+      stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+    });
   }
 
-  // Handle unique constraint errors
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    customError.statusCode = StatusCodes.BAD_REQUEST;
-    customError.message = `${err.errors[0].path} must be unique`;
-  }
-
-  // Handle foreign key constraint errors
-  if (err.name === 'SequelizeForeignKeyConstraintError') {
-    customError.statusCode = StatusCodes.BAD_REQUEST;
-    customError.message = 'The referenced record does not exist';
-  }
-
-  return res.status(customError.statusCode).json({ 
-    success: false, 
-    message: customError.message 
+  // Send the error response
+  return res.status(customError.statusCode).json({
+    success: customError.success,
+    message: customError.message
   });
 };
 

@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
+import Service from './Service.js';
+import User from './User.js';
 
 const Booking = sequelize.define('Booking', {
   fullName: {
@@ -14,8 +16,8 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.STRING,
     allowNull: true
   },
-  sessionType: {
-    type: DataTypes.STRING,
+  serviceId: {
+    type: DataTypes.INTEGER,
     allowNull: false
   },
   date: {
@@ -47,5 +49,10 @@ const Booking = sequelize.define('Booking', {
     allowNull: true
   }
 });
+
+// Define associations directly in the model file
+Booking.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
+Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
+Booking.belongsTo(User, { foreignKey: 'photographerId', as: 'photographer' });
 
 export default Booking;

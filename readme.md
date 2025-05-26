@@ -17,6 +17,7 @@ A RESTful API for a photography studio service that enables clients to browse ph
   - Booking Endpoints
   - Services Endpoints
   - Profile Picture Endpoints
+  - Health Check Endpoint
 - Database Schema
 - Testing
 - Error Handling
@@ -29,14 +30,17 @@ Photography Studio API is a complete backend solution for photography services. 
 
 ## Features
 
-- User authentication with JWT
+- User authentication with JWT and role-based tokens
 - Role-based access control (admin, photographer, client)
 - Photo gallery management by admins
+- Featured photos filtering for premium content
 - Booking system for photography sessions
 - Photographer assignment to bookings
 - Service catalog management
 - Profile picture management with Cloudinary
 - Booking management for all user roles
+- Health check endpoint for system monitoring
+- API Documentation with Swagger UI
 
 ## Technology Stack
 
@@ -111,6 +115,8 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 ## API Documentation
 
+Interactive API documentation is available at `/api-docs` when the server is running.
+
 ### Authentication Endpoints
 
 #### Register User
@@ -131,13 +137,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 - **Response**: `201 Created`
   ```json
   {
-    "user": {
-      "username": "johndoe",
-      "email": "john@example.com",
-      "role": "client",
-      "id": 1
-    },
-    "token": "jwt_token_here"
+    "message": "User created successfully"
   }
   ```
 
@@ -155,15 +155,10 @@ CLOUDINARY_API_SECRET=your_api_secret
 - **Response**: `200 OK`
   ```json
   {
-    "user": {
-      "username": "johndoe",
-      "email": "john@example.com",
-      "role": "client",
-      "id": 1
-    },
     "token": "jwt_token_here"
   }
   ```
+  Note: The JWT token includes user ID, username, and role information for access control.
 
 ### Photo Gallery Endpoints
 
@@ -451,33 +446,34 @@ CLOUDINARY_API_SECRET=your_api_secret
 - **Body**:
   ```json
   {
-    "fullName": "John Doe",
-    "email": "john@example.com",
-    "phoneNumber": "555-123-4567",
-    "sessionType": "wedding",
+    "fullName": "John Client",
+    "email": "client@example.com",
+    "phoneNumber": "555-987-6543",
+    "sessionType": "Wedding Photography",
     "date": "2023-12-01",
     "time": "15:30",
     "location": "Central Park",
-    "additionalDetails": "Looking for a wedding photographer for 3 hours"
+    "additionalDetails": "Looking for wedding photography for 3 hours",
+    "clientId": 3
   }
   ```
 - **Response**: `201 Created`
   ```json
   {
     "booking": {
+      "status": "pending",
       "id": 1,
-      "fullName": "John Doe",
-      "email": "john@example.com",
-      "phoneNumber": "555-123-4567",
-      "sessionType": "wedding",
+      "fullName": "John Client",
+      "email": "client@example.com",
+      "phoneNumber": "555-987-6543",
+      "sessionType": "Wedding Photography",
       "date": "2023-12-01",
       "time": "15:30",
       "location": "Central Park",
-      "additionalDetails": "Looking for a wedding photographer for 3 hours",
-      "status": "pending",
-      "client": 1,
-      "createdAt": "2023-05-20T09:15:00.000Z",
-      "updatedAt": "2023-05-20T09:15:00.000Z"
+      "additionalDetails": "Looking for wedding photography for 3 hours",
+      "clientId": 3,
+      "updatedAt": "2023-05-20T09:15:00.000Z",
+      "createdAt": "2023-05-20T09:15:00.000Z"
     }
   }
   ```
@@ -700,20 +696,22 @@ CLOUDINARY_API_SECRET=your_api_secret
 - **Response**: `200 OK`
   ```json
   {
+    "success": true,
+    "message": "Photographer assigned successfully",
     "booking": {
       "id": 1,
+      "fullName": "John Client",
+      "email": "client@example.com",
+      "phoneNumber": "555-987-6543",
+      "sessionType": "Wedding Photography",
+      "date": "2023-12-01",
+      "time": "15:30",
+      "location": "Central Park",
+      "additionalDetails": "Looking for wedding photography for 3 hours",
       "status": "confirmed",
-      "assignedPhotographer": {
-        "id": 2,
-        "name": "Jane Smith",
-        "email": "jane@example.com"
-      },
-      "client": {
-        "id": 1,
-        "name": "John Doe",
-        "email": "john@example.com",
-        "phoneNumber": "555-123-4567"
-      },
+      "clientId": 3,
+      "photographerId": 2,
+      "createdAt": "2023-05-20T09:15:00.000Z",
       "updatedAt": "2023-05-27T11:30:00.000Z"
     }
   }
@@ -784,6 +782,33 @@ CLOUDINARY_API_SECRET=your_api_secret
     "success": true,
     "message": "Profile picture reset to default",
     "profilePicture": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/default-profile.jpg"
+  }
+  ```
+
+### Health Check Endpoint
+
+#### API Health Status
+
+- **URL**: `/api/health`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "status": "UP",
+    "timestamp": "2023-05-28T14:30:00.000Z",
+    "service": "Photography Showcase Api",
+    "database": "Connected",
+    "uptime": 1234.56
+  }
+  ```
+- **Response (when service is down)**: `503 Service Unavailable`
+  ```json
+  {
+    "status": "DOWN",
+    "timestamp": "2023-05-28T14:30:00.000Z",
+    "service": "Photography Showcase Api",
+    "database": "Disconnected",
+    "error": "Error message details"
   }
   ```
 
@@ -883,22 +908,10 @@ The API implements rate limiting to prevent abuse:
 ## Security Considerations
 
 - Passwords are hashed using bcrypt
-- JWT tokens for authentication
+- JWT tokens for authentication with role information embedded
 - Role-based access control for protected routes
 - Helmet for setting security-related HTTP headers
 - XSS protection
 - Input validation
 - CORS configuration
-
-## Development Notes
-
-### Database Reset
-
-When you need to recreate all database tables (for example, after major schema changes):
-
-1. Set `DB_RESET=true` in your `.env` file
-2. Start the server once to recreate all tables
-3. Set `DB_RESET=false` in your `.env` file to prevent data loss on future restarts
-
-This operation will delete all existing data in the database, so use with caution.
 

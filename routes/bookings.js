@@ -2,6 +2,7 @@ import express from 'express';
 import { auth, adminOnly, photographerOrAdmin } from '../middleware/auth.js';
 import Booking from '../models/Booking.js';
 import User from '../models/User.js';
+import Service from '../models/Service.js';
 import { StatusCodes } from 'http-status-codes';
 import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/index.js';
 
@@ -22,7 +23,7 @@ import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/
  *         - fullName
  *         - email
  *         - phoneNumber
- *         - sessionType
+ *         - serviceId
  *         - date
  *         - time
  *         - location
@@ -40,9 +41,9 @@ import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/
  *         phoneNumber:
  *           type: string
  *           description: Client's phone number
- *         sessionType:
- *           type: string
- *           description: Type of photography session
+ *         serviceId:
+ *           type: integer
+ *           description: ID of the service booked
  *         date:
  *           type: string
  *           format: date
@@ -96,7 +97,7 @@ import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/
  *               - fullName
  *               - email
  *               - phoneNumber
- *               - sessionType
+ *               - serviceId
  *               - date
  *               - time
  *               - location
@@ -108,8 +109,8 @@ import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/
  *                 format: email
  *               phoneNumber:
  *                 type: string
- *               sessionType:
- *                 type: string
+ *               serviceId:
+ *                 type: integer
  *               date:
  *                 type: string
  *                 format: date
@@ -328,7 +329,7 @@ const router = express.Router();
  *             required:
  *               - fullName
  *               - email
- *               - sessionType
+ *               - serviceId
  *               - date
  *               - time
  *               - location
@@ -343,10 +344,9 @@ const router = express.Router();
  *               phoneNumber:
  *                 type: string
  *                 description: Client's phone number
- *               sessionType:
- *                 type: string
- *                 enum: [portrait, wedding, event, commercial, other]
- *                 description: Type of photography session
+ *               serviceId:
+ *                 type: integer
+ *                 description: ID of the service to book
  *               date:
  *                 type: string
  *                 format: date
@@ -369,9 +369,27 @@ const router = express.Router();
  *         description: Unauthorized
  */
 router.post('/', auth, async (req, res) => {
-  req.body.client = req.user.userId;
-  const booking = await Booking.create(req.body);
-  res.status(StatusCodes.CREATED).json({ booking });
+  try {
+    // Check if the service exists
+    const service = await Service.findByPk(req.body.serviceId);
+    if (!service) {
+      return res.status(404).json({ success: false, message: 'Service not found' });
+    }
+
+    // Get client ID from the authenticated user or from request body
+    const clientId = req.user.role === 'client' ? req.user.userId : req.body.clientId;
+    
+    // Create booking with serviceId instead of sessionType
+    const booking = await Booking.create({
+      ...req.body,
+      clientId,
+    });
+    
+    res.status(201).json({ booking });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 /**
@@ -403,12 +421,19 @@ router.post('/', auth, async (req, res) => {
 router.get('/my-bookings', auth, async (req, res) => {
   try {
     const bookings = await Booking.findAll({
-      where: { clientId: req.user.userId }
+      where: { clientId: req.user.userId },
+      include: [
+        {
+          model: Service,
+          as: 'service',
+          attributes: ['name', 'description', 'price', 'duration']
+        }
+      ]
     });
     
     res.status(200).json({ bookings });
   } catch (error) {
-    console.error('Error fetching client bookings:', error);
+    console.error('Error fetching bookings:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
