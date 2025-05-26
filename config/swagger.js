@@ -1,7 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 
-const PORT = process.env.PORT || 5000;
-
 // Swagger configuration
 const swaggerOptions = {
   definition: {
@@ -17,11 +15,11 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production' 
-          ? 'https://your-production-url.com' 
-          : `http://localhost:${PORT}`,
-        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
-      }
+                url: process.env.BASE || 'http://localhost:3000',
+                description: process.env.NODE_ENV === 'production' 
+                    ? 'Production server' 
+                    : 'Development server'
+            }
     ],
     components: {
       securitySchemes: {
