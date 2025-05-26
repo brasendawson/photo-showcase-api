@@ -31,6 +31,102 @@ const upload = multer({
 
 /**
  * @swagger
+ * tags:
+ *   name: Profile
+ *   description: User profile management endpoints
+ */
+
+/**
+ * @swagger
+ * /api/profile/picture:
+ *   post:
+ *     summary: Upload or update profile picture
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - profilePicture
+ *             properties:
+ *               profilePicture:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (JPG, PNG, etc.)
+ *     responses:
+ *       200:
+ *         description: Profile picture updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Profile picture updated successfully
+ *                 profilePicture:
+ *                   type: string
+ *                   example: https://res.cloudinary.com/yourcloud/image/upload/v1234567890/profile-pictures/profile-1-1234567890.jpg
+ *       400:
+ *         description: Invalid file type or missing file
+ *       401:
+ *         description: Unauthorized
+ *   get:
+ *     summary: Get user's profile picture
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile picture URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 profilePicture:
+ *                   type: string
+ *                   example: https://res.cloudinary.com/yourcloud/image/upload/v1234567890/profile-pictures/profile-1-1234567890.jpg
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete user's profile picture
+ *     tags: [Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile picture reset to default
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Profile picture reset to default
+ *                 profilePicture:
+ *                   type: string
+ *                   example: https://res.cloudinary.com/yourcloud/image/upload/v1/profile-pictures/default-profile.jpg
+ *       401:
+ *         description: Unauthorized
+ */
+
+/**
+ * @swagger
  * /api/profile/picture:
  *   post:
  *     summary: Upload profile picture

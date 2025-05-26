@@ -18,7 +18,13 @@ export const auth = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { userId: decoded.userId, username: decoded.username, role: decoded.role };
+    
+    // Add user info to request
+    req.user = { 
+      userId: decoded.userId, 
+      username: decoded.username, 
+      role: decoded.role || 'client' // Default to client if role is missing
+    };
     req.token = token;
     next();
   } catch (error) {

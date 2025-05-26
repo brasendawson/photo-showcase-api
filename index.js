@@ -14,7 +14,8 @@ import authRoutes from './routes/auth.js';
 import photoRoutes from './routes/photos.js';
 import bookingRoutes from './routes/bookings.js';
 import serviceRoutes from './routes/services.js';
-import profileRoutes from './routes/profile.js';  // Add this line
+import profileRoutes from './routes/profile.js';
+import healthRoutes from './routes/health.js';  // Add this line
 
 // Import middleware
 import errorHandlerMiddleware from './middleware/error-handler.js';
@@ -99,13 +100,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/profile', profileRoutes);  // Add this line
+app.use('/api/profile', profileRoutes); 
+app.use('/api/health', healthRoutes); // Fixed: use healthRoutes instead of undefined health
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
 // Swagger documentation route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
 
 // Error handling middleware
 app.use('*', (req, res) => {

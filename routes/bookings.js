@@ -5,6 +5,309 @@ import User from '../models/User.js';
 import { StatusCodes } from 'http-status-codes';
 import { NotFoundError, BadRequestError, UnauthenticatedError } from '../errors/index.js';
 
+/**
+ * @swagger
+ * tags:
+ *   name: Bookings
+ *   description: Booking management endpoints
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Booking:
+ *       type: object
+ *       required:
+ *         - fullName
+ *         - email
+ *         - phoneNumber
+ *         - sessionType
+ *         - date
+ *         - time
+ *         - location
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Booking ID
+ *         fullName:
+ *           type: string
+ *           description: Client's full name
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Client's email address
+ *         phoneNumber:
+ *           type: string
+ *           description: Client's phone number
+ *         sessionType:
+ *           type: string
+ *           description: Type of photography session
+ *         date:
+ *           type: string
+ *           format: date
+ *           description: Date of the session
+ *         time:
+ *           type: string
+ *           description: Time of the session
+ *         location:
+ *           type: string
+ *           description: Location of the session
+ *         additionalDetails:
+ *           type: string
+ *           description: Additional booking details
+ *         status:
+ *           type: string
+ *           enum: [pending, confirmed, completed, cancelled]
+ *           default: pending
+ *           description: Booking status
+ *         clientId:
+ *           type: integer
+ *           description: ID of the client who made the booking
+ *         photographerId:
+ *           type: integer
+ *           nullable: true
+ *           description: ID of the assigned photographer (null if not assigned)
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when booking was created
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when booking was last updated
+ */
+
+/**
+ * @swagger
+ * /api/bookings:
+ *   post:
+ *     summary: Create a new booking
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - email
+ *               - phoneNumber
+ *               - sessionType
+ *               - date
+ *               - time
+ *               - location
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phoneNumber:
+ *                 type: string
+ *               sessionType:
+ *                 type: string
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               time:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               additionalDetails:
+ *                 type: string
+ *               clientId:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Booking created successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ */
+
+/**
+ * @swagger
+ * /api/bookings/my-bookings:
+ *   get:
+ *     summary: Get current client's bookings
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of client's bookings
+ *       401:
+ *         description: Unauthorized
+ */
+
+/**
+ * @swagger
+ * /api/bookings/available:
+ *   get:
+ *     summary: Get available bookings for photographers
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Get bookings that haven't been assigned to photographers yet
+ *     responses:
+ *       200:
+ *         description: List of available bookings
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not a photographer or admin
+ */
+
+/**
+ * @swagger
+ * /api/bookings/{id}/accept:
+ *   patch:
+ *     summary: Photographer accepts booking
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               additionalDetails:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Booking accepted successfully
+ *       400:
+ *         description: Booking already assigned
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not a photographer or admin
+ *       404:
+ *         description: Booking not found
+ */
+
+/**
+ * @swagger
+ * /api/bookings/photographer:
+ *   get:
+ *     summary: Get photographer's assigned bookings
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of photographer's assigned bookings
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not a photographer or admin
+ */
+
+/**
+ * @swagger
+ * /api/bookings/{id}/assign:
+ *   patch:
+ *     summary: Admin assigns photographer to booking
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - photographerId
+ *             properties:
+ *               photographerId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Photographer assigned successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not an admin
+ *       404:
+ *         description: Booking not found
+ */
+
+/**
+ * @swagger
+ * /api/bookings/all:
+ *   get:
+ *     summary: Get all bookings (admin only)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all bookings
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not an admin
+ */
+
+/**
+ * @swagger
+ * /api/bookings/{id}/status:
+ *   patch:
+ *     summary: Update booking status (admin only)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, confirmed, completed, cancelled]
+ *     responses:
+ *       200:
+ *         description: Booking status updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Not an admin
+ *       404:
+ *         description: Booking not found
+ */
+
 const router = express.Router();
 
 /**
@@ -98,11 +401,16 @@ router.post('/', auth, async (req, res) => {
  *         description: Unauthorized
  */
 router.get('/my-bookings', auth, async (req, res) => {
-  const bookings = await Booking.find({ client: req.user.userId })
-    .sort('-createdAt')
-    .populate('assignedPhotographer', 'name email');
+  try {
+    const bookings = await Booking.findAll({
+      where: { clientId: req.user.userId }
+    });
     
-  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+    res.status(200).json({ bookings });
+  } catch (error) {
+    console.error('Error fetching client bookings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 /**
@@ -246,28 +554,17 @@ router.patch('/my-bookings/:id', auth, async (req, res) => {
  *       401:
  *         description: Unauthorized - photographer access required
  */
-router.get('/photographer', auth, async (req, res) => {
-  let photographerId;
-  
-  // If specific photographer ID is provided in params (admin request)
-  if (req.params.id) {
-    if (req.user.role !== 'admin') {
-      throw new UnauthenticatedError('Not authorized to access this route');
-    }
-    photographerId = req.params.id;
-  } else {
-    // Use the authenticated photographer's ID
-    if (req.user.role !== 'photographer') {
-      throw new UnauthenticatedError('Not authorized to access this route');
-    }
-    photographerId = req.user.userId;
+router.get('/photographer', auth, photographerOrAdmin, async (req, res) => {
+  try {
+    const bookings = await Booking.findAll({
+      where: { photographerId: req.user.userId }
+    });
+    
+    res.status(200).json({ bookings });
+  } catch (error) {
+    console.error('Error fetching photographer bookings:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
-  
-  const bookings = await Booking.find({ assignedPhotographer: photographerId })
-    .sort('date')
-    .populate('client', 'name email phoneNumber');
-  
-  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
 });
 
 /**
@@ -322,12 +619,13 @@ router.get('/photographer/:id', auth, adminOnly, async (req, res) => {
  *         description: Forbidden - admin access required
  */
 router.get('/all', auth, adminOnly, async (req, res) => {
-  const bookings = await Booking.find({})
-    .sort('-createdAt')
-    .populate('client', 'name email phoneNumber')
-    .populate('assignedPhotographer', 'name email');
-    
-  res.status(StatusCodes.OK).json({ bookings, count: bookings.length });
+  try {
+    const bookings = await Booking.findAll();
+    res.status(200).json({ bookings });
+  } catch (error) {
+    console.error('Error fetching all bookings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 /**
@@ -371,38 +669,22 @@ router.get('/all', auth, adminOnly, async (req, res) => {
  *         description: Booking or photographer not found
  */
 router.patch('/:id/assign', auth, adminOnly, async (req, res) => {
-  const { id: bookingId } = req.params;
-  const { photographerId } = req.body;
-  
-  if (!photographerId) {
-    throw new BadRequestError('Please provide photographer ID');
+  try {
+    const booking = await Booking.findByPk(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    booking.photographerId = req.body.photographerId;
+    booking.status = 'confirmed';
+    await booking.save();
+    
+    res.status(200).json({ success: true, message: 'Photographer assigned successfully', booking });
+  } catch (error) {
+    console.error('Error assigning photographer:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
-  
-  // Verify the photographer exists and has the photographer role
-  const photographer = await User.findOne({
-    _id: photographerId,
-    role: 'photographer'
-  });
-  
-  if (!photographer) {
-    throw new NotFoundError(`No photographer with id: ${photographerId}`);
-  }
-  
-  const booking = await Booking.findById(bookingId);
-  
-  if (!booking) {
-    throw new NotFoundError(`No booking with id: ${bookingId}`);
-  }
-  
-  booking.assignedPhotographer = photographerId;
-  booking.status = 'confirmed';
-  await booking.save();
-  
-  const updatedBooking = await Booking.findById(bookingId)
-    .populate('client', 'name email phoneNumber')
-    .populate('assignedPhotographer', 'name email');
-  
-  res.status(StatusCodes.OK).json({ booking: updatedBooking });
 });
 
 /**
@@ -565,51 +847,69 @@ router.delete('/:id', auth, async (req, res) => {
   });
 });
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Booking:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         fullName:
- *           type: string
- *         email:
- *           type: string
- *         phoneNumber:
- *           type: string
- *         sessionType:
- *           type: string
- *           enum: [portrait, wedding, event, commercial, other]
- *         date:
- *           type: string
- *           format: date
- *         time:
- *           type: string
- *         location:
- *           type: string
- *         additionalDetails:
- *           type: string
- *         status:
- *           type: string
- *           enum: [pending, confirmed, completed, cancelled]
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
- *         assignedPhotographer:
- *           type: object
- *           properties:
- *             id:
- *               type: integer
- *             name:
- *               type: string
- *             email:
- *               type: string
- */
+// Get available bookings for photographers
+router.get('/available', auth, photographerOrAdmin, async (req, res) => {
+  try {
+    const bookings = await Booking.findAll({
+      where: { 
+        photographerId: null,
+        status: 'pending'
+      }
+    });
+    
+    res.status(200).json({ bookings });
+  } catch (error) {
+    console.error('Error fetching available bookings:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Photographer accepts booking
+router.patch('/:id/accept', auth, photographerOrAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findByPk(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    if (booking.photographerId) {
+      return res.status(400).json({ success: false, message: 'Booking already assigned to a photographer' });
+    }
+    
+    booking.photographerId = req.user.userId;
+    booking.status = 'confirmed';
+    
+    if (req.body.additionalDetails) {
+      booking.additionalDetails = booking.additionalDetails + '\n\nPhotographer note: ' + req.body.additionalDetails;
+    }
+    
+    await booking.save();
+    
+    res.status(200).json({ success: true, message: 'Booking accepted successfully', booking });
+  } catch (error) {
+    console.error('Error accepting booking:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin updates booking status
+router.patch('/:id/status', auth, adminOnly, async (req, res) => {
+  try {
+    const booking = await Booking.findByPk(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    
+    booking.status = req.body.status;
+    await booking.save();
+    
+    res.status(200).json({ success: true, message: 'Booking status updated successfully', booking });
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 export default router;

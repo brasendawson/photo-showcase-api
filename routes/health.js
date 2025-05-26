@@ -32,7 +32,6 @@ import { sequelize } from '../config/db.js';
 
 const router = express.Router();
 
-// Change from '/health' to '/'
 router.get('/', async (req, res) => {
   try {
     // Check database connection

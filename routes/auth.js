@@ -36,20 +36,42 @@ const router = express.Router();
  *             properties:
  *               username:
  *                 type: string
+ *                 description: Unique username
  *               email:
  *                 type: string
  *                 format: email
+ *                 description: Valid email address
  *               password:
  *                 type: string
  *                 format: password
+ *                 description: Strong password with at least 8 characters
  *               role:
  *                 type: string
- *                 
+ *                 enum: [admin, photographer, client]
+ *                 description: User role (defaults to 'client' if not provided or invalid)
  *     responses:
  *       201:
  *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User created successfully
  *       400:
- *         description: Invalid input
+ *         description: Invalid input or user already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Username or email already exists
+ *       500:
+ *         description: Server error
  */
 
 /**
@@ -80,12 +102,21 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
  *                 token:
  *                   type: string
- *                 username:
+ *                   description: JWT token containing userId, username, and role
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
  *                   type: string
+ *                   example: Invalid credentials
+ *       500:
+ *         description: Server error
  */
 
 /**
@@ -99,14 +130,24 @@ const router = express.Router();
  *     responses:
  *       200:
  *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - Invalid or missing token
+ *       500:
+ *         description: Server error
  */
 
 // Register
 router.post('/register', validateRegistration, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { 
@@ -127,10 +168,16 @@ router.post('/register', validateRegistration, async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
+    // Validate and set role (ensuring it's one of the allowed values)
+    const validRole = role && ['admin', 'photographer', 'client'].includes(role) 
+      ? role 
+      : 'client';
+    
     const user = await User.create({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role: validRole  // Make sure role is saved
     });
 
     res.status(201).json({ message: 'User created successfully' });
@@ -169,8 +216,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Make sure to include the user's role in the token
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
