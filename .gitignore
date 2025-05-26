@@ -35,11 +35,10 @@ coverage/
 .nyc_output/
 postman-tests.md
 environment.json
-test-photo.jpg
 Photo-Showcase-API.postman_collection.json
 newman/
 test-assets/
-create-test-assets.js
+
 
 # Production build
 dist/
