@@ -1,7 +1,5 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 
 const User = sequelize.define('User', {
     username: {
@@ -18,7 +16,7 @@ const User = sequelize.define('User', {
         allowNull: false
     },
     role: {
-        type: DataTypes.ENUM('admin', 'client', 'photographer'),
+        type: DataTypes.ENUM('admin', 'photographer', 'client'),
         allowNull: false,
         defaultValue: 'client'
     },
@@ -28,26 +26,10 @@ const User = sequelize.define('User', {
         defaultValue: 'https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/default-profile.jpg'
     }
 }, {
-    hooks: {
-        beforeSave: async (user) => {
-            if (user.changed('password')) {
-                const salt = await bcrypt.genSalt(10);
-                user.password = await bcrypt.hash(user.password, salt);
-            }
-        }
-    }
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: false,
+    tableName: 'users'
 });
-
-User.prototype.createJWT = function () {
-    return jwt.sign(
-        { userId: this.id, username: this.username, role: this.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_LIFETIME }
-    );
-};
-
-User.prototype.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-};
-
+    
 export default User;

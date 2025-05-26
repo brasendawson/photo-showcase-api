@@ -103,9 +103,6 @@ DB_PORT=3306
 JWT_SECRET=your_secret_key
 JWT_LIFETIME=1d
 
-# Database Reset Flag (set to true only when you need to reset all tables)
-DB_RESET=false
-
 # Cloudinary Configuration (for profile pictures)
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
