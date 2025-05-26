@@ -15,14 +15,14 @@ import photoRoutes from './routes/photos.js';
 import bookingRoutes from './routes/bookings.js';
 import serviceRoutes from './routes/services.js';
 import profileRoutes from './routes/profile.js';
-import healthRoutes from './routes/health.js';  // Add this line
+import healthRoutes from './routes/health.js';
 
 // Import middleware
 import errorHandlerMiddleware from './middleware/error-handler.js';
 
-// Import Swagger packages
-import swaggerJsdoc from 'swagger-jsdoc';
+// Import Swagger packages and configuration
 import swaggerUi from 'swagger-ui-express';
+import { swaggerDocs } from './config/swagger.js';  // Changed from default import to named import
 
 dotenv.config();
 
@@ -56,44 +56,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Define PORT before using it in Swagger configuration
+// Define PORT
 const PORT = process.env.PORT || 5000;
-
-// Swagger configuration
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Photography Studio API',
-      version: '1.0.0',
-      description: 'API for managing photography studio bookings and gallery',
-      contact: {
-        name: 'API Support',
-        email: 'support@photostudio.com'
-      }
-    },
-    servers: [
-      {
-        url: process.env.NODE_ENV === 'production' 
-          ? 'https://your-production-url.com' 
-          : `http://localhost:${PORT}`,
-        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
-      }
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
-      }
-    }
-  },
-  apis: ['./routes/*.js'] // Path to the API routes with JSDoc comments
-};
-
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -101,14 +65,13 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/profile', profileRoutes); 
-app.use('/api/health', healthRoutes); // Fixed: use healthRoutes instead of undefined health
+app.use('/api/health', healthRoutes);
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
 // Swagger documentation route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
 
 // Error handling middleware
 app.use('*', (req, res) => {

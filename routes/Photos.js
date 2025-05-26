@@ -378,4 +378,24 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
  *           format: date-time
  */
 
+/**
+ * Featured Status Filter
+ * 
+ * Purpose:
+ * This feature allows website users to view only the best/showcase photos that have been 
+ * specially selected by administrators to highlight the photographer's premium work.
+ * 
+ * Business Value:
+ * 1. Promotional: Featured photos typically represent the photographer's best work
+ * 2. Marketing: These photos can be used on the homepage or in promotional materials
+ * 3. Portfolio Highlights: Allows quick access to exemplary photos for potential clients
+ * 4. Curation: Gives admins control over which photos receive special visibility
+ * 
+ * Implementation:
+ * - Photos have a boolean 'featured' flag in the database
+ * - The API accepts a ?featured=true query parameter 
+ * - When this parameter is present, only photos marked as featured are returned
+ * - This enables the frontend to display special galleries of premium work
+ */
+
 export default router;

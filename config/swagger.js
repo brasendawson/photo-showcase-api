@@ -1,42 +1,39 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 
-const options = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Photography Showcase Api',
-            version: '1.0.0',
-            description: 'API for managing photography page',
-            contact: {
-                name: 'Group 17',
-            },
-            license: {
-                name: 'MIT',
-                url: 'https://opensource.org/licenses/MIT'
-            }
-        },
-        servers: [
-            {
-                url: process.env.BASE || 'http://127.0.0.1:3000',
-                description: process.env.NODE_ENV === 'production' 
-                    ? 'Production server' 
-                    : 'Development server'
-            }
-        ],
-        components: {
-            securitySchemes: {
-                bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT'
-                }
-            }
-        },
-        security: [{
-            bearerAuth: []
-        }]
+const PORT = process.env.PORT || 5000;
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Photography Studio API',
+      version: '1.0.0',
+      description: 'API for managing photography studio bookings and gallery',
+      contact: {
+        name: 'API Support',
+        email: 'support@photostudio.com'
+      }
     },
-    apis: ['./routes/*.js']
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://your-production-url.com' 
+          : `http://localhost:${PORT}`,
+        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    }
+  },
+  apis: ['./routes/*.js'] // Path to the API routes with JSDoc comments
 };
 
-export const specs = swaggerJsdoc(options);
+export const swaggerDocs = swaggerJsdoc(swaggerOptions);

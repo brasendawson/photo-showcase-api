@@ -24,10 +24,40 @@ import { sequelize } from '../config/db.js';
  *               properties:
  *                 status:
  *                   type: string
+ *                   example: UP
  *                 timestamp:
  *                   type: string
+ *                   format: date-time
+ *                 service:
+ *                   type: string
+ *                   example: Photography Showcase Api
+ *                 database:
+ *                   type: string
+ *                   example: Connected
  *                 uptime:
  *                   type: number
+ *                   description: Server uptime in seconds
+ *       503:
+ *         description: API is down or experiencing issues
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: DOWN
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 service:
+ *                   type: string
+ *                   example: Photography Showcase Api
+ *                 database:
+ *                   type: string
+ *                   example: Disconnected
+ *                 error:
+ *                   type: string
  */
 
 const router = express.Router();
