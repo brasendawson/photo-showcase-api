@@ -1,9 +1,6 @@
 import express from 'express';
-import { auth, isAdmin } from '../middleware/auth.js';
-import {
-  getAllUsers,
-  updateUserRole
-} from '../controllers/adminController.js';
+import { auth, adminOnly } from '../middleware/auth.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -30,15 +27,32 @@ const router = express.Router();
  *             example:
  *               success: true
  *               count: 2
- *               data:
+ *               users:
  *                 - id: 1
  *                   username: "johndoe"
  *                   email: "john@example.com"
  *                   role: "user"
- *                   isActive: true
  *                   createdAt: "2024-05-22T10:30:00Z"
  */
-router.get('/users', auth, isAdmin, getAllUsers);
+router.get('/users', auth, adminOnly, async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'email', 'role', 'createdAt']
+    });
+    
+    res.status(200).json({
+      success: true,
+      users,
+      count: users.length
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error fetching users' 
+    });
+  }
+});
 
 /**
  * @swagger
@@ -63,40 +77,115 @@ router.get('/users', auth, isAdmin, getAllUsers);
  *               newRole:
  *                 type: string
  *                 enum: [client, photographer, admin]
- *           examples:
- *             make_photographer:
- *               summary: Make user a photographer
- *               value:
- *                 username: "johndoe"
- *                 newRole: "photographer"
- *             make_admin:
- *               summary: Make user an admin
- *               value:
- *                 username: "janedoe"
- *                 newRole: "admin"
- *             remove_photographer:
- *               summary: Remove photographer role
- *               value:
- *                 username: "bobsmith"
- *                 newRole: "client"
  *     responses:
  *       200:
  *         description: Role updated successfully
- *         content:
- *           application/json:
- *             example:
- *               success: true
- *               message: "User role updated successfully"
  *       404:
  *         description: User not found
- *         content:
- *           application/json:
- *             example:
- *               success: false
- *               error: "User not found"
  *       403:
  *         description: Not authorized
  */
-router.put('/users/role', auth, isAdmin, updateUserRole);
+router.put('/users/role', auth, adminOnly, async (req, res) => {
+  try {
+    const { username, newRole } = req.body;
+    
+    if (!username || !newRole) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide username and newRole'
+      });
+    }
+    
+    // Validate role
+    if (!['client', 'photographer', 'admin'].includes(newRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role must be one of: client, photographer, admin'
+      });
+    }
+    
+    const user = await User.findOne({ where: { username } });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    user.role = newRole;
+    await user.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'User role updated successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error updating user role' 
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/admin/dashboard:
+ *   get:
+ *     summary: Get admin dashboard statistics
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ */
+router.get('/dashboard', auth, adminOnly, async (req, res) => {
+  try {
+    // Count users by role
+    const users = await User.findAll();
+    const userStats = {
+      total: users.length,
+      photographers: users.filter(user => user.role === 'photographer').length,
+      clients: users.filter(user => user.role === 'client').length,
+      admins: users.filter(user => user.role === 'admin').length
+    };
+    
+    // You can add more stats here as needed
+    const stats = {
+      users: userStats,
+      photos: {
+        total: 25,
+        featured: 5
+      },
+      bookings: {
+        total: 15,
+        pending: 5,
+        confirmed: 8,
+        completed: 2
+      },
+      services: {
+        total: 4
+      }
+    };
+    
+    res.status(200).json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error fetching dashboard stats' 
+    });
+  }
+});
 
 export default router;

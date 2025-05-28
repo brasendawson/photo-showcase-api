@@ -16,6 +16,7 @@ import bookingRoutes from './routes/bookings.js';
 import serviceRoutes from './routes/services.js';
 import profileRoutes from './routes/profile.js';
 import healthRoutes from './routes/health.js';
+import adminRoutes from './routes/admin.js'; // Add this import
 
 // Import middleware
 import errorHandlerMiddleware from './middleware/error-handler.js';
@@ -66,6 +67,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/profile', profileRoutes); 
 app.use('/api/health', healthRoutes);
+app.use('/api/admin', adminRoutes); // Add this line
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));

@@ -871,6 +871,31 @@ Interactive API documentation is available at `/api-docs` when the server is run
   }
   ```
 
+#### Update User Role (Admin Only)
+
+- **URL**: `/api/admin/users/role`
+- **Method**: `PUT`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "username": "johndoe",
+    "newRole": "photographer"
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "User role updated successfully",
+    "user": {
+      "id": 3,
+      "username": "johndoe",
+      "role": "photographer"
+    }
+  }
+  ```
+
 #### Get Dashboard Stats (Admin Only)
 
 - **URL**: `/api/admin/dashboard`
