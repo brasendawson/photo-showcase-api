@@ -616,7 +616,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
       "additionalDetails": "Looking for wedding photography for 3 hours",
       "status": "pending",
       "clientId": 3,
-      "photographerName": null,
       "updatedAt": "2023-05-20T09:15:00.000Z",
       "createdAt": "2023-05-20T09:15:00.000Z"
     }
@@ -644,7 +643,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
         "clientId": 3,
-        "photographerName": null,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-20T09:15:00.000Z",
         "service": {
@@ -679,7 +677,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
         "clientId": 3,
-        "photographerName": null,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-20T09:15:00.000Z"
       }
@@ -706,7 +703,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "booking": {
       "id": 1,
       "status": "confirmed",
-      "photographerName": "janephotographer",
       "additionalDetails": "I'll be your photographer for this session."
     }
   }
@@ -733,7 +729,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "I'll be your photographer for this session.",
         "status": "confirmed",
         "clientId": 3,
-        "photographerName": "janephotographer",
+        "photographerId": 2,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-25T14:20:00.000Z"
       }
@@ -760,8 +756,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "booking": {
       "id": 1,
       "status": "confirmed",
-      "serviceId": 2,
-      "photographerName": "janephotographer"
+      "photographerId": 2
     }
   }
   ```
@@ -787,7 +782,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "I'll be your photographer for this session.",
         "status": "confirmed",
         "clientId": 3,
-        "photographerName": "janephotographer",
+        "photographerId": 2,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-25T14:20:00.000Z"
       }
@@ -992,7 +987,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - additionalDetails: TEXT
 - status: ENUM ('pending', 'confirmed', 'completed', 'cancelled')
 - clientId: INT (Foreign Key → User.id)
-- photographerName: STRING (nullable)
+- photographerId: INT (Foreign Key → User.id, nullable)
 - createdAt: DATE
 - updatedAt: DATE
 
