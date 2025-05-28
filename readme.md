@@ -749,7 +749,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Body**:
   ```json
   {
-    "photographerName": "janephotographer"
+    "photographerId": 2
   }
   ```
 - **Response**: `200 OK`
@@ -925,36 +925,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
       "services": {
         "total": 4
       }
-    }
-  }
-  ```
-
-#### Moderate Content (Admin Only)
-
-- **URL**: `/api/admin/moderate`
-- **Method**: `POST`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "contentType": "photo",
-    "contentId": 5,
-    "action": "feature",
-    "reason": "High quality content"
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "message": "Content moderated successfully",
-    "moderation": {
-      "contentType": "photo",
-      "contentId": 5,
-      "action": "feature",
-      "reason": "High quality content",
-      "moderatedBy": 1,
-      "updatedAt": "2023-06-10T09:15:00.000Z"
     }
   }
   ```

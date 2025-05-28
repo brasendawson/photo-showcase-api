@@ -37,7 +37,7 @@ const router = express.Router();
 router.get('/users', auth, adminOnly, async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ['id', 'username', 'email', 'role', 'createdAt']
+      attributes: ['id', 'username', 'email', 'role'] 
     });
     
     res.status(200).json({
