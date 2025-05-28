@@ -603,6 +603,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
   ```json
   {
     "success": true,
+    "message": "Booking created successfully",
     "booking": {
       "id": 1,
       "fullName": "John Client",
@@ -615,13 +616,9 @@ Interactive API documentation is available at `/api-docs` when the server is run
       "additionalDetails": "Looking for wedding photography for 3 hours",
       "status": "pending",
       "clientId": 3,
+      "photographerName": null,
       "updatedAt": "2023-05-20T09:15:00.000Z",
-      "createdAt": "2023-05-20T09:15:00.000Z",
-      "service": {
-        "id": 1,
-        "name": "Wedding Photography",
-        "price": "1500.00"
-      }
+      "createdAt": "2023-05-20T09:15:00.000Z"
     }
   }
   ```
@@ -634,24 +631,28 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "bookings": [
       {
         "id": 1,
         "fullName": "John Client",
         "email": "client@example.com",
+        "phoneNumber": "555-987-6543",
         "serviceId": 1,
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
+        "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
+        "clientId": 3,
+        "photographerName": null,
         "createdAt": "2023-05-20T09:15:00.000Z",
+        "updatedAt": "2023-05-20T09:15:00.000Z",
         "service": {
-          "id": 1,
           "name": "Wedding Photography",
-          "price": "1500.00"
-        },
-        "photographer": null
+          "description": "Professional wedding photography services",
+          "price": "1500.00",
+          "duration": "6-8 hours"
+        }
       }
     ]
   }
@@ -665,20 +666,22 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "bookings": [
       {
         "id": 1,
         "fullName": "John Client",
         "email": "client@example.com",
+        "phoneNumber": "555-987-6543",
+        "serviceId": 1,
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
+        "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
-        "service": {
-          "id": 1,
-          "name": "Wedding Photography"
-        }
+        "clientId": 3,
+        "photographerName": null,
+        "createdAt": "2023-05-20T09:15:00.000Z",
+        "updatedAt": "2023-05-20T09:15:00.000Z"
       }
     ]
   }
@@ -703,9 +706,8 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "booking": {
       "id": 1,
       "status": "confirmed",
-      "photographerId": 2,
-      "additionalDetails": "I'll be your photographer for this session.",
-      "updatedAt": "2023-05-25T14:20:00.000Z"
+      "photographerName": "janephotographer",
+      "additionalDetails": "I'll be your photographer for this session."
     }
   }
   ```
@@ -718,25 +720,22 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "bookings": [
       {
         "id": 1,
         "fullName": "John Client",
         "email": "client@example.com",
         "phoneNumber": "555-987-6543",
+        "serviceId": 1,
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
+        "additionalDetails": "I'll be your photographer for this session.",
         "status": "confirmed",
-        "service": {
-          "id": 1,
-          "name": "Wedding Photography"
-        },
-        "client": {
-          "id": 3,
-          "username": "johnclient"
-        }
+        "clientId": 3,
+        "photographerName": "janephotographer",
+        "createdAt": "2023-05-20T09:15:00.000Z",
+        "updatedAt": "2023-05-25T14:20:00.000Z"
       }
     ]
   }
@@ -750,7 +749,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Body**:
   ```json
   {
-    "photographerId": 2
+    "photographerName": "janephotographer"
   }
   ```
 - **Response**: `200 OK`
@@ -761,47 +760,38 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "booking": {
       "id": 1,
       "status": "confirmed",
-      "photographerId": 2,
-      "updatedAt": "2023-05-27T11:30:00.000Z"
+      "serviceId": 2,
+      "photographerName": "janephotographer"
     }
   }
   ```
 
 #### Get All Bookings (Admin Only)
 
-- **URL**: `/api/admin/bookings`
+- **URL**: `/api/bookings/all`
 - **Method**: `GET`
 - **Headers**: `Authorization: Bearer jwt_token_here`
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "bookings": [
       {
         "id": 1,
         "fullName": "John Client",
         "email": "client@example.com",
+        "phoneNumber": "555-987-6543",
+        "serviceId": 1,
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
+        "additionalDetails": "I'll be your photographer for this session.",
         "status": "confirmed",
         "clientId": 3,
-        "photographerId": 2,
-        "service": {
-          "id": 1,
-          "name": "Wedding Photography"
-        },
-        "client": {
-          "id": 3,
-          "username": "johnclient"
-        },
-        "photographer": {
-          "id": 2,
-          "username": "janephotographer"
-        }
+        "photographerName": "janephotographer",
+        "createdAt": "2023-05-20T09:15:00.000Z",
+        "updatedAt": "2023-05-25T14:20:00.000Z"
       }
-    ],
-    "count": 1
+    ]
   }
   ```
 
@@ -1007,7 +997,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - additionalDetails: TEXT
 - status: ENUM ('pending', 'confirmed', 'completed', 'cancelled')
 - clientId: INT (Foreign Key → User.id)
-- photographerId: INT (Foreign Key → User.id, nullable)
+- photographerName: STRING (nullable)
 - createdAt: DATE
 - updatedAt: DATE
 

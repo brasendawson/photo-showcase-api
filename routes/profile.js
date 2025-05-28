@@ -259,7 +259,7 @@ router.delete('/picture', auth, async (req, res) => {
   }
 
   // Reset to default
-  const defaultProfileUrl = 'https://res.cloudinary.com/your-cloud-name/image/upload/v1/profile-pictures/default-profile.jpg';
+  const defaultProfileUrl = 'https://res.cloudinary.com/dornqaxya/image/upload/pfp_nopglh.webp';
   user.profilePicture = defaultProfileUrl;
   await user.save();
 
