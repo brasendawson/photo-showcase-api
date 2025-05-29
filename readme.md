@@ -16,7 +16,6 @@ A RESTful API for a photography studio service that enables clients to browse ph
   - Photo Gallery Endpoints
   - Booking Endpoints
   - Services Endpoints
-  - Categories Endpoints
   - Profile Picture Endpoints
   - Admin Endpoints
   - Health Check Endpoint
@@ -35,8 +34,7 @@ Photography Studio API is a complete backend solution for photography services. 
 - User authentication with JWT and role-based tokens
 - Token blacklisting for secure logout
 - Role-based access control (admin, photographer, client)
-- Photo gallery management with filtering and pagination
-- Category-based photo organization
+- Photo gallery management
 - Booking system for photography sessions
 - Photographer assignment to bookings
 - Service catalog management
@@ -73,7 +71,7 @@ Photography Studio API is a complete backend solution for photography services. 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/photo-showcase-api.git
+   git clone https://github.com/brasendawson/photo-showcase-api.git
    cd photo-showcase-api
    ```
 
@@ -199,36 +197,54 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **URL**: `/api/photos`
 - **Method**: `GET`
 - **Query Parameters**:
-  - `category`: Filter by category ID
+  - `type`: Filter by photo type (portrait, wedding, event, commercial, landscape, family, other)
   - `featured`: Filter by featured status (true/false)
   - `sort`: Sort field(s) with direction (e.g., createdAt:desc)
-  - `page`: Page number (default: 1)
-  - `limit`: Items per page (default: 10)
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "photos": [
       {
         "id": 1,
         "title": "Beach Wedding",
         "description": "Beautiful beach wedding photoshoot",
         "imageUrl": "https://example.com/photos/beach-wedding.jpg",
-        "photographerId": 2,
-        "categoryId": 1,
+        "photographerName": "Jane Photographer",
+        "type": "wedding",
         "featured": true,
         "createdAt": "2023-05-10T14:30:00.000Z",
-        "updatedAt": "2023-05-10T14:30:00.000Z",
-        "category": {
-          "id": 1,
-          "name": "wedding"
-        }
+        "updatedAt": "2023-05-10T14:30:00.000Z"
       }
     ],
-    "count": 1,
-    "totalPhotos": 30,
-    "totalPages": 3,
-    "currentPage": 1
+    "count": 1
+  }
+  ```
+
+#### Get Gallery Photos
+
+- **URL**: `/api/photos/gallery`
+- **Method**: `GET`
+- **Query Parameters**:
+  - `type`: Filter by photo type (portrait, wedding, event, commercial, landscape, family, other)
+- **Response**: `200 OK`
+  ```json
+  {
+    "photos": [
+      {
+        "id": 1,
+        "title": "Beach Wedding",
+        "imageUrl": "https://example.com/photos/beach-wedding.jpg",
+        "type": "wedding",
+        "photographerName": "Jane Photographer"
+      },
+      {
+        "id": 2,
+        "title": "Family Portrait",
+        "imageUrl": "https://example.com/photos/family-portrait.jpg",
+        "type": "portrait",
+        "photographerName": "John Smith"
+      }
+    ]
   }
   ```
 
@@ -239,50 +255,46 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "photo": {
       "id": 1,
       "title": "Beach Wedding",
       "description": "Beautiful beach wedding photoshoot",
       "imageUrl": "https://example.com/photos/beach-wedding.jpg",
-      "photographerId": 2,
-      "categoryId": 1,
+      "photographerName": "Jane Photographer",
+      "type": "wedding",
       "featured": true,
       "createdAt": "2023-05-10T14:30:00.000Z",
-      "updatedAt": "2023-05-10T14:30:00.000Z",
-      "category": {
-        "id": 1,
-        "name": "wedding",
-        "description": "Wedding photography"
-      }
+      "updatedAt": "2023-05-10T14:30:00.000Z"
     }
   }
   ```
 
-#### Add Photo (Photographer or Admin)
+#### Add Photo (Admin Only)
 
 - **URL**: `/api/photos`
 - **Method**: `POST`
 - **Headers**: `Authorization: Bearer jwt_token_here`
-- **Content-Type**: `multipart/form-data`
 - **Body**:
-  - `photo`: Image file (JPG, PNG)
-  - `title`: "Family Portrait"
-  - `description`: "Professional family portrait session"
-  - `categoryId`: 2
-  - `featured`: false
+  ```json
+  {
+    "title": "Family Portrait",
+    "description": "Professional family portrait session",
+    "imageUrl": "https://example.com/photos/family-portrait.jpg",
+    "photographerName": "Jane Photographer",
+    "type": "portrait",
+    "featured": false
+  }
+  ```
 - **Response**: `201 Created`
   ```json
   {
-    "success": true,
-    "message": "Photo uploaded successfully",
     "photo": {
       "id": 2,
       "title": "Family Portrait",
       "description": "Professional family portrait session",
-      "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/photos/family-portrait.jpg",
-      "photographerId": 2,
-      "categoryId": 2,
+      "imageUrl": "https://example.com/photos/family-portrait.jpg",
+      "photographerName": "Jane Photographer",
+      "type": "portrait",
       "featured": false,
       "createdAt": "2023-05-15T10:20:00.000Z",
       "updatedAt": "2023-05-15T10:20:00.000Z"
@@ -290,7 +302,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
   }
   ```
 
-#### Update Photo (Owner or Admin)
+#### Update Photo (Admin Only)
 
 - **URL**: `/api/photos/:id`
 - **Method**: `PATCH`
@@ -301,21 +313,19 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "title": "Updated Family Portrait",
     "description": "Updated description for family portrait",
     "featured": true,
-    "categoryId": 3
+    "type": "portrait"
   }
   ```
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "message": "Photo updated successfully",
     "photo": {
       "id": 2,
       "title": "Updated Family Portrait",
       "description": "Updated description for family portrait",
-      "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/photos/family-portrait.jpg",
-      "photographerId": 2,
-      "categoryId": 3,
+      "imageUrl": "https://example.com/photos/family-portrait.jpg",
+      "photographerName": "Jane Photographer",
+      "type": "portrait",
       "featured": true,
       "createdAt": "2023-05-15T10:20:00.000Z",
       "updatedAt": "2023-05-15T11:30:00.000Z"
@@ -323,7 +333,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
   }
   ```
 
-#### Delete Photo (Owner or Admin)
+#### Delete Photo (Admin Only)
 
 - **URL**: `/api/photos/:id`
 - **Method**: `DELETE`
@@ -331,126 +341,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "message": "Photo deleted successfully"
-  }
-  ```
-
-### Categories Endpoints
-
-#### Get All Categories
-
-- **URL**: `/api/categories`
-- **Method**: `GET`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "categories": [
-      {
-        "id": 1,
-        "name": "wedding",
-        "description": "Wedding photography",
-        "slug": "wedding",
-        "createdAt": "2023-05-10T14:30:00.000Z",
-        "updatedAt": "2023-05-10T14:30:00.000Z"
-      },
-      {
-        "id": 2,
-        "name": "portrait",
-        "description": "Portrait photography",
-        "slug": "portrait",
-        "createdAt": "2023-05-10T14:35:00.000Z",
-        "updatedAt": "2023-05-10T14:35:00.000Z"
-      }
-    ]
-  }
-  ```
-
-#### Get Category by ID
-
-- **URL**: `/api/categories/:id`
-- **Method**: `GET`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "category": {
-      "id": 1,
-      "name": "wedding",
-      "description": "Wedding photography",
-      "slug": "wedding",
-      "createdAt": "2023-05-10T14:30:00.000Z",
-      "updatedAt": "2023-05-10T14:30:00.000Z"
-    }
-  }
-  ```
-
-#### Create Category (Admin Only)
-
-- **URL**: `/api/categories`
-- **Method**: `POST`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "name": "landscape",
-    "description": "Landscape photography"
-  }
-  ```
-- **Response**: `201 Created`
-  ```json
-  {
-    "success": true,
-    "message": "Category created successfully",
-    "category": {
-      "id": 3,
-      "name": "landscape",
-      "description": "Landscape photography",
-      "slug": "landscape",
-      "createdAt": "2023-06-01T11:20:00.000Z",
-      "updatedAt": "2023-06-01T11:20:00.000Z"
-    }
-  }
-  ```
-
-#### Update Category (Admin Only)
-
-- **URL**: `/api/categories/:id`
-- **Method**: `PATCH`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Body**:
-  ```json
-  {
-    "description": "Professional wedding photography"
-  }
-  ```
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "message": "Category updated successfully",
-    "category": {
-      "id": 1,
-      "name": "wedding",
-      "description": "Professional wedding photography",
-      "slug": "wedding",
-      "createdAt": "2023-05-10T14:30:00.000Z",
-      "updatedAt": "2023-06-02T09:15:00.000Z"
-    }
-  }
-  ```
-
-#### Delete Category (Admin Only)
-
-- **URL**: `/api/categories/:id`
-- **Method**: `DELETE`
-- **Headers**: `Authorization: Bearer jwt_token_here`
-- **Response**: `200 OK`
-  ```json
-  {
-    "success": true,
-    "message": "Category deleted successfully"
+    "msg": "Success! Photo deleted."
   }
   ```
 
@@ -602,8 +493,6 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - **Response**: `201 Created`
   ```json
   {
-    "success": true,
-    "message": "Booking created successfully",
     "booking": {
       "id": 1,
       "fullName": "John Client",
@@ -616,6 +505,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
       "additionalDetails": "Looking for wedding photography for 3 hours",
       "status": "pending",
       "clientId": 3,
+      "photographerId": null,
       "updatedAt": "2023-05-20T09:15:00.000Z",
       "createdAt": "2023-05-20T09:15:00.000Z"
     }
@@ -643,6 +533,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
         "clientId": 3,
+        "photographerId": null,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-20T09:15:00.000Z",
         "service": {
@@ -677,6 +568,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "pending",
         "clientId": 3,
+        "photographerId": null,
         "createdAt": "2023-05-20T09:15:00.000Z",
         "updatedAt": "2023-05-20T09:15:00.000Z"
       }
@@ -703,7 +595,8 @@ Interactive API documentation is available at `/api-docs` when the server is run
     "booking": {
       "id": 1,
       "status": "confirmed",
-      "additionalDetails": "I'll be your photographer for this session."
+      "photographerId": 2,
+      "additionalDetails": "Looking for wedding photography for 3 hours\n\nPhotographer note: I'll be your photographer for this session."
     }
   }
   ```
@@ -726,7 +619,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
-        "additionalDetails": "I'll be your photographer for this session.",
+        "additionalDetails": "Looking for wedding photography for 3 hours\n\nPhotographer note: I'll be your photographer for this session.",
         "status": "confirmed",
         "clientId": 3,
         "photographerId": 2,
@@ -752,7 +645,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
   ```json
   {
     "success": true,
-    "message": "Booking assigned successfully",
+    "message": "Photographer assigned successfully",
     "booking": {
       "id": 1,
       "status": "confirmed",
@@ -779,7 +672,7 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "date": "2023-12-01",
         "time": "15:30",
         "location": "Central Park",
-        "additionalDetails": "I'll be your photographer for this session.",
+        "additionalDetails": "Looking for wedding photography for 3 hours",
         "status": "confirmed",
         "clientId": 3,
         "photographerId": 2,
@@ -787,6 +680,29 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "updatedAt": "2023-05-25T14:20:00.000Z"
       }
     ]
+  }
+  ```
+
+#### Update Booking Status (Admin Only)
+
+- **URL**: `/api/bookings/:id/status`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "status": "completed"
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "Booking status updated successfully",
+    "booking": {
+      "id": 1,
+      "status": "completed"
+    }
   }
   ```
 
@@ -851,15 +767,13 @@ Interactive API documentation is available at `/api-docs` when the server is run
         "id": 1,
         "username": "adminuser",
         "email": "admin@example.com",
-        "role": "admin",
-        "createdAt": "2023-05-01T10:00:00.000Z"
+        "role": "admin"
       },
       {
         "id": 2,
         "username": "janephotographer",
         "email": "jane@example.com",
-        "role": "photographer",
-        "createdAt": "2023-05-02T11:30:00.000Z"
+        "role": "photographer"
       }
     ],
     "count": 2
@@ -959,18 +873,9 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - title: STRING
 - description: TEXT
 - imageUrl: STRING
-- photographerId: INT (Foreign Key → User.id)
-- categoryId: INT (Foreign Key → Category.id)
+- photographerName: STRING
+- type: ENUM ('portrait', 'wedding', 'event', 'commercial', 'landscape', 'family', 'other')
 - featured: BOOLEAN
-- createdAt: DATE
-- updatedAt: DATE
-
-### Category
-
-- id: INT (Primary Key)
-- name: STRING (Unique)
-- description: TEXT
-- slug: STRING (Unique)
 - createdAt: DATE
 - updatedAt: DATE
 
@@ -1039,4 +944,3 @@ The API implements rate limiting to prevent abuse:
 - XSS protection via input sanitization
 - CORS configuration
 - Cloudinary secure URLs for media storage
-

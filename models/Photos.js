@@ -29,8 +29,9 @@ const Photo = sequelize.define('Photo', {
       'portrait',
       'wedding',
       'event',
-      'landscape',
       'commercial',
+      'landscape',
+      'family',
       'other'
     ),
     defaultValue: 'other',

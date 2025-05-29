@@ -18,7 +18,7 @@ const router = express.Router();
  *         name: type
  *         schema:
  *           type: string
- *           enum: [portrait, wedding, event, landscape, commercial, other]
+ *           enum: [portrait, wedding, event, commercial, landscape, family, other]
  *         description: Filter by photo type
  *       - in: query
  *         name: featured
@@ -80,31 +80,19 @@ router.get('/', async (req, res) => {
  * @swagger
  * /api/photos/gallery:
  *   get:
- *     summary: Get photos for gallery display
- *     description: Retrieve photos with pagination for the public gallery
+ *     summary: Get gallery photos
+ *     description: Retrieve photos for gallery display with optional type filtering
  *     tags: [Gallery]
  *     parameters:
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
- *           enum: [portrait, wedding, event, landscape, commercial, other]
+ *           enum: [portrait, wedding, event, commercial, landscape, family, other]
  *         description: Filter by photo type
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *         description: Number of photos per page
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
  *     responses:
  *       200:
- *         description: Paginated gallery photos
+ *         description: A list of gallery photos
  *         content:
  *           application/json:
  *             schema:
@@ -115,6 +103,8 @@ router.get('/', async (req, res) => {
  *                   items:
  *                     type: object
  *                     properties:
+ *                       id:
+ *                         type: integer
  *                       title:
  *                         type: string
  *                       imageUrl:
@@ -123,46 +113,32 @@ router.get('/', async (req, res) => {
  *                         type: string
  *                       photographerName:
  *                         type: string
- *                 count:
- *                   type: integer
- *                 totalPhotos:
- *                   type: integer
- *                 numOfPages:
- *                   type: integer
- *                 currentPage:
- *                   type: integer
+ *       500:
+ *         description: Server error
  */
 router.get('/gallery', async (req, res) => {
-  const { type, limit = 20, page = 1 } = req.query;
-  const queryObject = {};
-
-  if (type) {
-    queryObject.type = type;
-  }
-
-  const offset = (Number(page) - 1) * Number(limit);
-  
-  const photos = await Photo.findAll({
-    where: queryObject,
-    order: [
-      ['featured', 'DESC'],
-      ['createdAt', 'DESC']
-    ],
-    offset,
-    limit: Number(limit),
-    attributes: ['title', 'imageUrl', 'type', 'photographerName']
-  });
+  try {
+    const { type } = req.query;
     
-  const totalPhotos = await Photo.count({ where: queryObject });
-  const numOfPages = Math.ceil(totalPhotos / Number(limit));
-  
-  res.status(StatusCodes.OK).json({
-    photos,
-    count: photos.length,
-    totalPhotos,
-    numOfPages,
-    currentPage: Number(page)
-  });
+    // Filter options
+    const queryOptions = {};
+    if (type) {
+      queryOptions.where = { type };
+    }
+    
+    const photos = await Photo.findAll({
+      ...queryOptions,
+      attributes: ['id', 'title', 'imageUrl', 'type', 'photographerName']
+    });
+    
+    res.status(200).json({ photos });
+  } catch (error) {
+    console.error('Error fetching gallery photos:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error fetching gallery photos' 
+    });
+  }
 });
 
 /**
@@ -234,7 +210,7 @@ router.get('/:id', async (req, res) => {
  *                 type: string
  *               type:
  *                 type: string
- *                 enum: [portrait, wedding, event, landscape, commercial, other]
+ *                 enum: [portrait, wedding, event, commercial, landscape, family, other]
  *                 default: other
  *               featured:
  *                 type: boolean
@@ -285,7 +261,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *                 type: string
  *               type:
  *                 type: string
- *                 enum: [portrait, wedding, event, landscape, commercial, other]
+ *                 enum: [portrait, wedding, event, commercial, landscape, family, other]
  *               featured:
  *                 type: boolean
  *     responses:
@@ -367,7 +343,7 @@ router.delete('/:id', auth, adminOnly, async (req, res) => {
  *           type: string
  *         type:
  *           type: string
- *           enum: [portrait, wedding, event, landscape, commercial, other]
+ *           enum: [portrait, wedding, event, commercial, landscape, family, other]
  *         featured:
  *           type: boolean
  *         createdAt:
