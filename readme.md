@@ -19,6 +19,7 @@ A RESTful API for a photography studio service that enables clients to browse ph
   - Profile Picture Endpoints
   - Admin Endpoints
   - Health Check Endpoint
+  - About Page Endpoints
 - Database Schema
 - Testing
 - Error Handling
@@ -854,6 +855,332 @@ Interactive API documentation is available at `/api-docs` when the server is run
   }
   ```
 
+### About Page Endpoints
+
+#### Get About Page Content
+
+- **URL**: `/api/about`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "id": 1,
+    "title": "About Our Photography Studio",
+    "content": "Welcome to our photography studio! We are a team of passionate photographers dedicated to capturing life's most precious moments...",
+    "isActive": true,
+    "createdAt": "2023-06-10T08:15:00.000Z",
+    "updatedAt": "2023-06-15T14:30:00.000Z"
+  }
+  ```
+
+#### Create About Page Content (Admin Only)
+
+- **URL**: `/api/about`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "title": "About Our Photography Studio",
+    "content": "Welcome to our photography studio! We are a team of passionate photographers dedicated to capturing life's most precious moments...",
+    "isActive": true
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "success": true,
+    "aboutPage": {
+      "id": 1,
+      "title": "About Our Photography Studio",
+      "content": "Welcome to our photography studio! We are a team of passionate photographers dedicated to capturing life's most precious moments...",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-10T08:15:00.000Z"
+    }
+  }
+  ```
+
+#### Update About Page Content (Admin Only)
+
+- **URL**: `/api/about/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "title": "Updated About Our Photography Studio",
+    "content": "Updated content about our photography studio and our mission...",
+    "isActive": true
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "About page content updated successfully",
+    "aboutPage": {
+      "id": 1,
+      "title": "Updated About Our Photography Studio",
+      "content": "Updated content about our photography studio and our mission...",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-15T14:30:00.000Z"
+    }
+  }
+  ```
+
+#### Delete About Page Content (Admin Only)
+
+- **URL**: `/api/about/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "About page content deleted successfully"
+  }
+  ```
+
+#### Get Complete About Page Data
+
+- **URL**: `/api/about/complete`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "about": {
+      "id": 1,
+      "title": "About Our Photography Studio",
+      "content": "Welcome to our photography studio! We are a team of passionate photographers dedicated to capturing life's most precious moments...",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-15T14:30:00.000Z"
+    },
+    "socialMedia": [
+      {
+        "id": 1,
+        "platform": "Instagram",
+        "url": "https://instagram.com/photostudio",
+        "icon": "instagram",
+        "isActive": true,
+        "createdAt": "2023-06-10T08:15:00.000Z",
+        "updatedAt": "2023-06-15T14:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "platform": "Facebook",
+        "url": "https://facebook.com/photostudio",
+        "icon": "facebook",
+        "isActive": true,
+        "createdAt": "2023-06-10T08:15:00.000Z",
+        "updatedAt": "2023-06-15T14:30:00.000Z"
+      }
+    ],
+    "contact": {
+      "id": 1,
+      "email": "contact@photostudio.com",
+      "phone": "555-123-4567",
+      "address": "123 Photography Lane, Cameracity, PC 54321",
+      "businessHours": "Monday-Friday: 9am-5pm, Saturday: 10am-3pm",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-15T14:30:00.000Z"
+    }
+  }
+  ```
+
+#### Get Social Media Links
+
+- **URL**: `/api/about/social`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "count": 2,
+    "socialMedia": [
+      {
+        "id": 1,
+        "platform": "Instagram",
+        "url": "https://instagram.com/photostudio",
+        "icon": "instagram",
+        "isActive": true,
+        "createdAt": "2023-06-10T08:15:00.000Z",
+        "updatedAt": "2023-06-15T14:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "platform": "Facebook",
+        "url": "https://facebook.com/photostudio",
+        "icon": "facebook",
+        "isActive": true,
+        "createdAt": "2023-06-10T08:15:00.000Z",
+        "updatedAt": "2023-06-15T14:30:00.000Z"
+      }
+    ]
+  }
+  ```
+
+#### Add Social Media Link (Admin Only)
+
+- **URL**: `/api/about/social`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "platform": "Twitter",
+    "url": "https://twitter.com/photostudio",
+    "icon": "twitter"
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "success": true,
+    "message": "Social media link added successfully",
+    "socialMedia": {
+      "id": 3,
+      "platform": "Twitter",
+      "url": "https://twitter.com/photostudio",
+      "icon": "twitter",
+      "isActive": true,
+      "createdAt": "2023-06-20T10:25:00.000Z",
+      "updatedAt": "2023-06-20T10:25:00.000Z"
+    }
+  }
+  ```
+
+#### Update Social Media Link (Admin Only)
+
+- **URL**: `/api/about/social/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "url": "https://twitter.com/newphotostudio",
+    "isActive": false
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "Social media link updated successfully",
+    "socialMedia": {
+      "id": 3,
+      "platform": "Twitter",
+      "url": "https://twitter.com/newphotostudio",
+      "icon": "twitter",
+      "isActive": false,
+      "createdAt": "2023-06-20T10:25:00.000Z",
+      "updatedAt": "2023-06-20T11:30:00.000Z"
+    }
+  }
+  ```
+
+#### Delete Social Media Link (Admin Only)
+
+- **URL**: `/api/about/social/:id`
+- **Method**: `DELETE`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "Social media link deleted successfully"
+  }
+  ```
+
+#### Get Contact Information
+
+- **URL**: `/api/about/contact`
+- **Method**: `GET`
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "contactInfo": {
+      "id": 1,
+      "email": "contact@photostudio.com",
+      "phone": "555-123-4567",
+      "address": "123 Photography Lane, Cameracity, PC 54321",
+      "businessHours": "Monday-Friday: 9am-5pm, Saturday: 10am-3pm",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-15T14:30:00.000Z"
+    }
+  }
+  ```
+
+#### Create Contact Information (Admin Only)
+
+- **URL**: `/api/about/contact`
+- **Method**: `POST`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "email": "contact@photostudio.com",
+    "phone": "555-123-4567",
+    "address": "123 Photography Lane, Cameracity, PC 54321",
+    "businessHours": "Monday-Friday: 9am-5pm, Saturday: 10am-3pm",
+    "makeActive": true
+  }
+  ```
+- **Response**: `201 Created`
+  ```json
+  {
+    "success": true,
+    "message": "Contact information created successfully",
+    "contactInfo": {
+      "id": 1,
+      "email": "contact@photostudio.com",
+      "phone": "555-123-4567",
+      "address": "123 Photography Lane, Cameracity, PC 54321",
+      "businessHours": "Monday-Friday: 9am-5pm, Saturday: 10am-3pm",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-10T08:15:00.000Z"
+    }
+  }
+  ```
+
+#### Update Contact Information (Admin Only)
+
+- **URL**: `/api/about/contact/:id`
+- **Method**: `PATCH`
+- **Headers**: `Authorization: Bearer jwt_token_here`
+- **Body**:
+  ```json
+  {
+    "email": "newcontact@photostudio.com",
+    "businessHours": "Monday-Friday: 9am-6pm, Saturday: 10am-4pm",
+    "makeActive": true
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "success": true,
+    "message": "Contact information updated successfully",
+    "contactInfo": {
+      "id": 1,
+      "email": "newcontact@photostudio.com",
+      "phone": "555-123-4567",
+      "address": "123 Photography Lane, Cameracity, PC 54321",
+      "businessHours": "Monday-Friday: 9am-6pm, Saturday: 10am-4pm",
+      "isActive": true,
+      "createdAt": "2023-06-10T08:15:00.000Z",
+      "updatedAt": "2023-06-20T11:45:00.000Z"
+    }
+  }
+  ```
+
 ## Database Schema
 
 ### User
@@ -903,6 +1230,36 @@ Interactive API documentation is available at `/api-docs` when the server is run
 - description: TEXT
 - price: DECIMAL(10,2)
 - duration: STRING
+- createdAt: DATE
+- updatedAt: DATE
+
+### AboutContent
+
+- id: INT (Primary Key)
+- title: STRING
+- content: TEXT
+- isActive: BOOLEAN
+- createdAt: DATE
+- updatedAt: DATE
+
+### SocialMedia
+
+- id: INT (Primary Key)
+- platform: STRING
+- url: STRING
+- icon: STRING
+- isActive: BOOLEAN
+- createdAt: DATE
+- updatedAt: DATE
+
+### ContactInfo
+
+- id: INT (Primary Key)
+- email: STRING
+- phone: STRING
+- address: TEXT
+- businessHours: TEXT
+- isActive: BOOLEAN
 - createdAt: DATE
 - updatedAt: DATE
 

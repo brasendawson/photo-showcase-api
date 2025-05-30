@@ -11,12 +11,13 @@ import 'express-async-errors';
 
 // Import route files
 import authRoutes from './routes/auth.js';
-import photoRoutes from './routes/photos.js';
+import photoRoutes from './routes/Photos.js';
 import bookingRoutes from './routes/bookings.js';
 import serviceRoutes from './routes/services.js';
 import profileRoutes from './routes/profile.js';
 import healthRoutes from './routes/health.js';
-import adminRoutes from './routes/admin.js'; // Add this import
+import adminRoutes from './routes/admin.js'; 
+import aboutRouter from './routes/about.js';
 
 // Import middleware
 import errorHandlerMiddleware from './middleware/error-handler.js';
@@ -67,7 +68,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/profile', profileRoutes); 
 app.use('/api/health', healthRoutes);
-app.use('/api/admin', adminRoutes); // Add this line
+app.use('/api/admin', adminRoutes);
+app.use('/api/about', aboutRouter);
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
