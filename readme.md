@@ -99,7 +99,7 @@ Create a `.env` file in the root directory with the following variables:
 
 ```
 # Server Configuration
-PORT=8000
+PORT=3000
 NODE_ENV=development
 
 # Database Configuration
