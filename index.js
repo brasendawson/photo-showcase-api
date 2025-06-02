@@ -1,7 +1,5 @@
 import express from 'express';
 import dotenv from 'dotenv';
-// If you installed morgan, uncomment this line
-// import morgan from 'morgan';
 import cors from 'cors';
 import helmet from 'helmet';
 import xss from 'xss-clean';
@@ -109,4 +107,4 @@ const start = async () => {
   }
 };
 
-start();
+export default app;
