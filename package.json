@@ -20,7 +20,7 @@
     "serve-favicon": "^2.5.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "vercel": "^41.0.2",
+    "vercel": "^41.7.8",
     "winston": "^3.17.0",
     "xss-clean": "^0.1.4"
   },
