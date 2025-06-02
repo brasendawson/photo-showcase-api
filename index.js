@@ -26,7 +26,7 @@ import errorHandlerMiddleware from './middleware/error-handler.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocs } from './config/swagger.js';  // Changed from default import to named import
 
-dotenv.config();
+dotenv.config({ path: './config/.env' });
 
 const app = express();
 
