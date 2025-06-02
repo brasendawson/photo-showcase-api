@@ -70,8 +70,6 @@ app.use('/api/health', healthRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/about', aboutRouter);
 
-// Serve static files from the uploads directory
-app.use('/uploads', express.static('uploads'));
 
 // Swagger documentation route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
