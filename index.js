@@ -4,11 +4,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import xss from 'xss-clean';
 import { limiter } from './middleware/rateLimit.js';
-import { sequelize } from './config/db.js';
 import favicon from 'serve-favicon';
 import path from 'path';
 import { connectDB } from './config/db.js';
 import { errorHandlerMiddleware } from './middleware/error-handler.js';
+import logger from './utils/logger.js';
 
 // Import route files
 import authRoutes from './routes/auth.js';
