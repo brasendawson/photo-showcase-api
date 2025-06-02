@@ -5,7 +5,8 @@ import helmet from 'helmet';
 import xss from 'xss-clean';
 import rateLimit from 'express-rate-limit';
 import { sequelize } from './config/db.js';
-import 'express-async-errors';
+import favicon from 'serve-favicon';
+import path from 'path';
 
 // Import route files
 import authRoutes from './routes/auth.js';
@@ -22,11 +23,16 @@ import errorHandlerMiddleware from './middleware/error-handler.js';
 
 // Import Swagger packages and configuration
 import swaggerUi from 'swagger-ui-express';
-import { swaggerDocs } from './config/swagger.js';  // Changed from default import to named import
+import { swaggerDocs } from './config/swagger.js'; 
 
 dotenv.config({ path: './config/.env' });
 
 const app = express();
+app.set('trust proxy', 1);
+app.use(favicon(path.join(__dirname, 'favicon.ico')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(cors());
 
 // Security middleware
 app.use(helmet());
@@ -38,14 +44,9 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100 // limit each IP to 100 requests per windowMs
 });
-app.use(limiter);
 
-// Body parser and logging
+app.use(limiter);
 app.use(express.json());
-// If you installed morgan, uncomment this line
-// if (process.env.NODE_ENV !== 'production') {
-//   app.use(morgan('dev'));
-// }
 
 // Welcome route
 app.get('/', (req, res) => {
