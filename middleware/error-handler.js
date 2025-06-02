@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import logger from '../utils/logger.js';
 
-const errorHandlerMiddleware = (err, req, res, next) => {
+export const errorHandlerMiddleware = (err, req, res, next) => {
   // Create custom error response
   let customError = {
     success: false,
@@ -57,5 +57,3 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     message: customError.message
   });
 };
-
-export default errorHandlerMiddleware;
