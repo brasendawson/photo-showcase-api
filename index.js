@@ -19,10 +19,14 @@ import profileRoutes from './routes/profile.js';
 import healthRoutes from './routes/health.js';
 import adminRoutes from './routes/admin.js'; 
 import aboutRouter from './routes/about.js';
+import { fileURLToPath } from 'url';
 
 // Import Swagger packages and configuration
 import swaggerUi from 'swagger-ui-express';
 import { swaggerDocs } from './config/swagger.js'; 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: './config/.env' });
 
@@ -75,25 +79,32 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // Error Handler
 app.use(errorHandlerMiddleware);
 
-// Start server
-const start = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection established successfully');
-    
-    // In development, you might want to sync the models with the database
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('Database models synchronized');
-    }
-    
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, () => {
+    logger.info('Server started', {
+        event: 'server_start',
+        port: PORT,
+        timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception', {
+        error: err.message,
+        stack: err.stack,
+        event: 'uncaught_exception'
+    });
     process.exit(1);
-  }
-};
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    logger.error('Unhandled Rejection', {
+        error: err.message,
+        stack: err.stack,
+        event: 'unhandled_rejection'
+    });
+    process.exit(1);
+});
 
 export default app;
