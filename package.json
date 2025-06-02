@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@vercel/edge-config": "^1.4.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.6.1",
     "cors": "^2.8.5",
