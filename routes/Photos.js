@@ -3,8 +3,96 @@ import { auth, adminOnly } from '../middleware/auth.js';
 import Photo from '../models/Photos.js';
 import { StatusCodes } from 'http-status-codes';
 import { NotFoundError, BadRequestError } from '../errors/index.js';
+import multer from 'multer';
+import cloudinary from '../utils/cloudinary.js';
+import { Readable } from 'stream';
 
 const router = express.Router();
+
+// Set up multer with memory storage (no local files)
+const storage = multer.memoryStorage();
+
+// File filter for images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new BadRequestError('Only image files are allowed'), false);
+  }
+};
+
+// Set up multer upload middleware
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter
+});
+
+// Function to upload buffer to Cloudinary
+const uploadBufferToCloudinary = async (buffer) => {
+  return new Promise((resolve, reject) => {
+    // Create a readable stream from buffer
+    const stream = Readable.from(buffer);
+    
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'photo-showcase',
+        transformation: [{ width: 1200, crop: 'limit' }]
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    
+    // Pipe the stream to Cloudinary
+    stream.pipe(uploadStream);
+  });
+};
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Gallery
+ *     description: Photo gallery and browsing operations
+ *   - name: Gallery Management
+ *     description: Photo administration and management operations
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Photo:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         imageUrl:
+ *           type: string
+ *         photographerName:
+ *           type: string
+ *         type:
+ *           type: string
+ *           enum: [portrait, wedding, event, commercial, landscape, family, other]
+ *         featured:
+ *           type: boolean
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
 
 /**
  * @swagger
@@ -188,24 +276,28 @@ router.get('/:id', async (req, res) => {
  *     tags: [Gallery Management]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - title
  *               - description
- *               - imageUrl
+ *               - image
  *               - photographerName
  *             properties:
  *               title:
  *                 type: string
  *               description:
  *                 type: string
- *               imageUrl:
+ *               image:
  *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload
  *               photographerName:
  *                 type: string
  *               type:
@@ -222,10 +314,33 @@ router.get('/:id', async (req, res) => {
  *         description: Unauthorized
  *       403:
  *         description: Forbidden - admin access required
+ *       400:
+ *         description: Bad request - invalid image or missing required fields
  */
-router.post('/', auth, adminOnly, async (req, res) => {
-  const photo = await Photo.create(req.body);
-  res.status(StatusCodes.CREATED).json({ photo });
+router.post('/', auth, adminOnly, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      throw new BadRequestError('Image upload is required');
+    }
+    
+    // Upload the buffer directly to Cloudinary
+    const imageUrl = await uploadBufferToCloudinary(req.file.buffer);
+    
+    // Create the photo with data from the form and the Cloudinary URL
+    const photoData = {
+      ...req.body,
+      imageUrl
+    };
+    
+    const photo = await Photo.create(photoData);
+    res.status(StatusCodes.CREATED).json({ photo });
+  } catch (error) {
+    if (error.name === 'BadRequestError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to upload image: ${error.message}`);
+    }
+  }
 });
 
 /**
@@ -237,6 +352,8 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *     tags: [Gallery Management]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     parameters:
  *       - in: path
  *         name: id
@@ -247,7 +364,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -255,8 +372,10 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
- *               imageUrl:
+ *               image:
  *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload (optional if not changing)
  *               photographerName:
  *                 type: string
  *               type:
@@ -274,16 +393,47 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *       404:
  *         description: Photo not found
  */
-router.patch('/:id', auth, adminOnly, async (req, res) => {
-  const { id: photoId } = req.params;
-  const photo = await Photo.findByPk(photoId);
-  
-  if (!photo) {
-    throw new NotFoundError(`No photo with id: ${photoId}`);
+router.patch('/:id', auth, adminOnly, upload.single('image'), async (req, res) => {
+  try {
+    const { id: photoId } = req.params;
+    const photo = await Photo.findByPk(photoId);
+    
+    if (!photo) {
+      throw new NotFoundError(`No photo with id: ${photoId}`);
+    }
+    
+    // Prepare the update data
+    const updateData = { ...req.body };
+    
+    // If a new image was uploaded, update the imageUrl
+    if (req.file) {
+      // Upload the new image to Cloudinary
+      const imageUrl = await uploadBufferToCloudinary(req.file.buffer);
+      
+      // If there's an existing image, delete it from Cloudinary
+      if (photo.imageUrl) {
+        try {
+          // Extract the public ID from the URL
+          const publicId = 'photo-showcase/' + photo.imageUrl.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+          // Continue with update even if old image deletion fails
+        }
+      }
+      
+      updateData.imageUrl = imageUrl;
+    }
+    
+    await photo.update(updateData);
+    res.status(StatusCodes.OK).json({ photo });
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to update photo: ${error.message}`);
+    }
   }
-  
-  await photo.update(req.body);
-  res.status(StatusCodes.OK).json({ photo });
 });
 
 /**
@@ -313,46 +463,35 @@ router.patch('/:id', auth, adminOnly, async (req, res) => {
  *         description: Photo not found
  */
 router.delete('/:id', auth, adminOnly, async (req, res) => {
-  const { id: photoId } = req.params;
-  const photo = await Photo.findByPk(photoId);
-  
-  if (!photo) {
-    throw new NotFoundError(`No photo with id: ${photoId}`);
+  try {
+    const { id: photoId } = req.params;
+    const photo = await Photo.findByPk(photoId);
+    
+    if (!photo) {
+      throw new NotFoundError(`No photo with id: ${photoId}`);
+    }
+    
+    // Delete the image from Cloudinary if it exists
+    if (photo.imageUrl) {
+      try {
+        const publicId = 'photo-showcase/' + photo.imageUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch (error) {
+        console.error('Failed to delete image from Cloudinary:', error);
+        // Continue with deletion even if Cloudinary deletion fails
+      }
+    }
+    
+    await photo.destroy();
+    res.status(StatusCodes.OK).json({ msg: 'Success! Photo deleted.' });
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to delete photo: ${error.message}`);
+    }
   }
-  
-  await photo.destroy();
-  res.status(StatusCodes.OK).json({ msg: 'Success! Photo deleted.' });
 });
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     Photo:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         title:
- *           type: string
- *         description:
- *           type: string
- *         imageUrl:
- *           type: string
- *         photographerName:
- *           type: string
- *         type:
- *           type: string
- *           enum: [portrait, wedding, event, commercial, landscape, family, other]
- *         featured:
- *           type: boolean
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
- */
 
 /**
  * Featured Status Filter

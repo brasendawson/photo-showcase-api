@@ -58,7 +58,7 @@ app.get('/', (req, res) => {
 });
 
 // Define PORT
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 // Use routes
 app.use('/api/auth', authRoutes);
