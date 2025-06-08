@@ -395,6 +395,7 @@ fetch('/api/photos', {
         "description": "Professional wedding photography services",
         "price": "1200.00",
         "duration": "6-8 hours",
+        "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/service-images/wedding-service.jpg",
         "createdAt": "2023-05-10T14:30:00.000Z",
         "updatedAt": "2023-05-10T14:30:00.000Z"
       },
@@ -404,6 +405,7 @@ fetch('/api/photos', {
         "description": "Professional portrait photography",
         "price": "250.00",
         "duration": "1-2 hours",
+        "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/service-images/portrait-service.jpg",
         "createdAt": "2023-05-15T10:20:00.000Z",
         "updatedAt": "2023-05-15T10:20:00.000Z"
       }
@@ -425,6 +427,7 @@ fetch('/api/photos', {
       "description": "Professional wedding photography services",
       "price": "1200.00",
       "duration": "6-8 hours",
+      "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/service-images/wedding-service.jpg",
       "createdAt": "2023-05-10T14:30:00.000Z",
       "updatedAt": "2023-05-10T14:30:00.000Z"
     }
@@ -436,15 +439,14 @@ fetch('/api/photos', {
 - **URL**: `/api/services`
 - **Method**: `POST`
 - **Headers**: `Authorization: Bearer jwt_token_here`
+- **Content-Type**: `multipart/form-data`
 - **Body**:
-  ```json
-  {
-    "name": "Commercial Photography",
-    "description": "Professional product and commercial photography",
-    "price": 800,
-    "duration": "4-5 hours"
-  }
-  ```
+  - `name`: Service name
+  - `description`: Service description
+  - `image`: Image file for the service
+  - `price`: Service price (optional)
+  - `duration`: Service duration (optional)
+  
 - **Response**: `201 Created`
   ```json
   {
@@ -455,6 +457,7 @@ fetch('/api/photos', {
       "description": "Professional product and commercial photography",
       "price": "800.00",
       "duration": "4-5 hours",
+      "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/service-images/commercial-service.jpg",
       "createdAt": "2023-06-01T11:20:00.000Z",
       "updatedAt": "2023-06-01T11:20:00.000Z"
     }
@@ -466,24 +469,24 @@ fetch('/api/photos', {
 - **URL**: `/api/services/:id`
 - **Method**: `PATCH`
 - **Headers**: `Authorization: Bearer jwt_token_here`
+- **Content-Type**: `multipart/form-data`
 - **Body**:
-  ```json
-  {
-    "description": "Premium wedding photography services with multiple photographers",
-    "price": 1500
-  }
-  ```
+  - `name`: Service name (optional)
+  - `description`: Service description (optional)
+  - `image`: New image file (optional)
+  - `price`: Service price (optional)
+  - `duration`: Service duration (optional)
+  
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
-    "message": "Service updated successfully",
     "service": {
       "id": 1,
       "name": "Wedding Photography",
       "description": "Premium wedding photography services with multiple photographers",
       "price": "1500.00",
       "duration": "6-8 hours",
+      "imageUrl": "https://res.cloudinary.com/your-cloud-name/image/upload/v1/service-images/updated-wedding-service.jpg",
       "createdAt": "2023-05-10T14:30:00.000Z",
       "updatedAt": "2023-06-02T09:15:00.000Z"
     }
@@ -498,10 +501,49 @@ fetch('/api/photos', {
 - **Response**: `200 OK`
   ```json
   {
-    "success": true,
     "message": "Service removed successfully"
   }
   ```
+
+### Service Image Upload Details
+
+The service management endpoints include image upload functionality with the following features:
+
+- **Direct Upload**: Images are uploaded directly to Cloudinary without local storage
+- **Size Limit**: Maximum file size is 5MB
+- **Format Validation**: Only image file types are accepted (JPG, JPEG, PNG, GIF)
+- **Automatic Processing**: Images are automatically resized to a maximum width of 1200px while maintaining aspect ratio
+- **Storage Organization**: All service images are stored in a dedicated 'service-images' folder in Cloudinary
+- **Resource Management**: When updating or deleting services, the old images are automatically removed from Cloudinary to avoid unused resources
+
+### Example Service Creation with Image
+
+```javascript
+// Example using fetch and FormData
+async function createService() {
+  const formData = new FormData();
+  formData.append('name', 'Family Photography');
+  formData.append('description', 'Capture your family's special moments with our professional photography service.');
+  formData.append('image', document.getElementById('serviceImage').files[0]);
+  formData.append('price', '350');
+  formData.append('duration', '2-3 hours');
+
+  try {
+    const response = await fetch('/api/services', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer your_admin_token'
+      },
+      body: formData
+    });
+    
+    const data = await response.json();
+    console.log('Service created:', data);
+  } catch (error) {
+    console.error('Error creating service:', error);
+  }
+}
+```
 
 ### Booking Endpoints
 

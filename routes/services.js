@@ -268,8 +268,8 @@ const uploadBufferToCloudinary = async (buffer) => {
  *         description: List of all services
  */
 router.get('/', async (req, res) => {
+  // Removed the isActive filter to show all services
   const services = await Service.findAll({
-    where: { isActive: true },
     order: [['name', 'ASC']]
   });
   
