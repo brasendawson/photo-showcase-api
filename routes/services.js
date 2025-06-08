@@ -2,7 +2,10 @@ import express from 'express';
 import { auth, adminOnly } from '../middleware/auth.js';
 import Service from '../models/Service.js';
 import { StatusCodes } from 'http-status-codes';
-import { NotFoundError } from '../errors/index.js';
+import { NotFoundError, BadRequestError } from '../errors/index.js';
+import multer from 'multer';
+import cloudinary from '../utils/cloudinary.js';
+import { Readable } from 'stream';
 
 /**
  * @swagger
@@ -36,6 +39,9 @@ import { NotFoundError } from '../errors/index.js';
  *         duration:
  *           type: string
  *           description: Service duration (e.g., "1-2 hours")
+ *         imageUrl:
+ *           type: string
+ *           description: URL of the service image
  *         isActive:
  *           type: boolean
  *           default: true
@@ -56,20 +62,27 @@ import { NotFoundError } from '../errors/index.js';
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - name
  *               - description
+ *               - image
  *             properties:
  *               name:
  *                 type: string
  *               description:
  *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The service image file to upload
  *               price:
  *                 type: number
  *               duration:
@@ -77,8 +90,17 @@ import { NotFoundError } from '../errors/index.js';
  *     responses:
  *       201:
  *         description: Service created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 service:
+ *                   $ref: '#/components/schemas/Service'
  *       400:
- *         description: Invalid input
+ *         description: Invalid input or missing image
  *       401:
  *         description: Unauthorized
  *       403:
@@ -114,6 +136,8 @@ import { NotFoundError } from '../errors/index.js';
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     parameters:
  *       - in: path
  *         name: id
@@ -124,7 +148,7 @@ import { NotFoundError } from '../errors/index.js';
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -132,6 +156,10 @@ import { NotFoundError } from '../errors/index.js';
  *                 type: string
  *               description:
  *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: New service image file (optional if not changing)
  *               price:
  *                 type: number
  *               duration:
@@ -141,6 +169,13 @@ import { NotFoundError } from '../errors/index.js';
  *     responses:
  *       200:
  *         description: Service updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 service:
+ *                   $ref: '#/components/schemas/Service'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -149,6 +184,7 @@ import { NotFoundError } from '../errors/index.js';
  *         description: Service not found
  *   delete:
  *     summary: Delete service (admin only)
+ *     description: Remove a photography service and delete associated image from Cloudinary
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
@@ -162,6 +198,13 @@ import { NotFoundError } from '../errors/index.js';
  *     responses:
  *       200:
  *         description: Service deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       401:
  *         description: Unauthorized
  *       403:
@@ -171,6 +214,47 @@ import { NotFoundError } from '../errors/index.js';
  */
 
 const router = express.Router();
+
+// Set up multer with memory storage (no local files)
+const storage = multer.memoryStorage();
+
+// File filter for images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new BadRequestError('Only image files are allowed'), false);
+  }
+};
+
+// Set up multer upload middleware
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter
+});
+
+// Function to upload buffer to Cloudinary
+const uploadBufferToCloudinary = async (buffer) => {
+  return new Promise((resolve, reject) => {
+    // Create a readable stream from buffer
+    const stream = Readable.from(buffer);
+    
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'service-images',
+        transformation: [{ width: 1200, crop: 'limit' }]
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    
+    // Pipe the stream to Cloudinary
+    stream.pipe(uploadStream);
+  });
+};
 
 /**
  * @swagger
@@ -230,19 +314,27 @@ router.get('/:id', async (req, res) => {
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - name
+ *               - description
+ *               - image
  *             properties:
  *               name:
  *                 type: string
  *               description:
  *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload
  *               price:
  *                 type: number
  *               duration:
@@ -255,21 +347,32 @@ router.get('/:id', async (req, res) => {
  *       401:
  *         description: Unauthorized
  */
-router.post('/', auth, adminOnly, async (req, res) => {
+router.post('/', auth, adminOnly, upload.single('image'), async (req, res) => {
   try {
+    if (!req.file) {
+      throw new BadRequestError('Service image is required');
+    }
+    
     const { name, description, price, duration } = req.body;
+    
+    // Upload the buffer directly to Cloudinary
+    const imageUrl = await uploadBufferToCloudinary(req.file.buffer);
     
     const service = await Service.create({
       name,
       description,
       price,
-      duration
+      duration,
+      imageUrl
     });
     
     res.status(201).json({ success: true, service });
   } catch (error) {
-    console.error('Error creating service:', error);
-    res.status(500).json({ success: false, message: error.message });
+    if (error.name === 'BadRequestError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to create service: ${error.message}`);
+    }
   }
 });
 
@@ -282,6 +385,8 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     parameters:
  *       - in: path
  *         name: id
@@ -290,7 +395,7 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *           type: integer
  *     requestBody:
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -298,6 +403,10 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *                 type: string
  *               description:
  *                 type: string
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The image file to upload (optional if not changing)
  *               isActive:
  *                 type: boolean
  *               price:
@@ -312,15 +421,46 @@ router.post('/', auth, adminOnly, async (req, res) => {
  *       401:
  *         description: Unauthorized
  */
-router.patch('/:id', auth, adminOnly, async (req, res) => {
-  const service = await Service.findByPk(req.params.id);
-  
-  if (!service) {
-    throw new NotFoundError(`No service with id ${req.params.id}`);
+router.patch('/:id', auth, adminOnly, upload.single('image'), async (req, res) => {
+  try {
+    const service = await Service.findByPk(req.params.id);
+    
+    if (!service) {
+      throw new NotFoundError(`No service with id ${req.params.id}`);
+    }
+    
+    // Prepare the update data
+    const updateData = { ...req.body };
+    
+    // If a new image was uploaded, update the imageUrl
+    if (req.file) {
+      // Upload the new image to Cloudinary
+      const imageUrl = await uploadBufferToCloudinary(req.file.buffer);
+      
+      // If there's an existing image, delete it from Cloudinary
+      if (service.imageUrl) {
+        try {
+          // Extract the public ID from the URL
+          const publicId = 'service-images/' + service.imageUrl.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error('Failed to delete old image:', error);
+          // Continue with update even if old image deletion fails
+        }
+      }
+      
+      updateData.imageUrl = imageUrl;
+    }
+    
+    await service.update(updateData);
+    res.status(StatusCodes.OK).json({ service });
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to update service: ${error.message}`);
+    }
   }
-  
-  await service.update(req.body);
-  res.status(StatusCodes.OK).json({ service });
 });
 
 /**
@@ -328,7 +468,7 @@ router.patch('/:id', auth, adminOnly, async (req, res) => {
  * /api/services/{id}:
  *   delete:
  *     summary: Delete service
- *     description: Remove a photography service (Admin only)
+ *     description: Remove a photography service and delete associated image from Cloudinary
  *     tags: [Services]
  *     security:
  *       - bearerAuth: []
@@ -347,16 +487,35 @@ router.patch('/:id', auth, adminOnly, async (req, res) => {
  *         description: Unauthorized
  */
 router.delete('/:id', auth, adminOnly, async (req, res) => {
-  const service = await Service.findByPk(req.params.id);
-  
-  if (!service) {
-    throw new NotFoundError(`No service with id ${req.params.id}`);
+  try {
+    const service = await Service.findByPk(req.params.id);
+    
+    if (!service) {
+      throw new NotFoundError(`No service with id ${req.params.id}`);
+    }
+    
+    // Delete the image from Cloudinary if it exists
+    if (service.imageUrl) {
+      try {
+        const publicId = 'service-images/' + service.imageUrl.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch (error) {
+        console.error('Failed to delete image from Cloudinary:', error);
+        // Continue with deletion even if Cloudinary deletion fails
+      }
+    }
+    
+    // Soft delete by marking as inactive
+    await service.update({ isActive: false });
+    
+    res.status(StatusCodes.OK).json({ message: 'Service removed successfully' });
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      throw error;
+    } else {
+      throw new BadRequestError(`Failed to delete service: ${error.message}`);
+    }
   }
-  
-  // Soft delete by marking as inactive
-  await service.update({ isActive: false });
-  
-  res.status(StatusCodes.OK).json({ message: 'Service removed successfully' });
 });
 
 export default router;

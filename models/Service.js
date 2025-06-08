@@ -28,6 +28,10 @@ const Service = sequelize.define('Service', {
     type: DataTypes.STRING,
     allowNull: true,
     comment: 'Approximate duration of the service (e.g., "1 hour", "2-3 hours")'
+  },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
 });
 
